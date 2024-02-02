@@ -33,6 +33,7 @@ from vllm.sequence import Logprob
 from vllm.tracing import (contains_trace_headers, extract_trace_headers,
                           log_tracing_disabled_warning)
 from vllm.utils import random_uuid
+import uuid
 
 logger = init_logger(__name__)
 
@@ -130,7 +131,7 @@ class OpenAIServingChat(OpenAIServing):
             logger.error("Error in loading multi-modal data: %s", e)
             return self.create_error_response(str(e))
 
-        request_id = f"chat-{random_uuid()}"
+        request_id = str(uuid.uuid4())
         try:
             sampling_params = request.to_sampling_params()
             decoding_config = await self.engine.get_decoding_config()

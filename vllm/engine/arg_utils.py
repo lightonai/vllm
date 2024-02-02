@@ -1,3 +1,4 @@
+import os
 import argparse
 import dataclasses
 import json
@@ -25,6 +26,15 @@ def nullable_str(val: str):
     if not val or val == "None":
         return None
     return val
+
+
+def get_model_names(names):
+    if not names:
+        return None
+    served_models = []
+    for item in names.split(','):
+        served_models.append(item)
+    return served_models
 
 
 @dataclass
@@ -130,7 +140,7 @@ class EngineArgs:
         parser.add_argument(
             '--model',
             type=str,
-            default='facebook/opt-125m',
+            default=os.getenv('MODEL', 'facebook/opt-125m'),
             help='Name or path of the huggingface model to use.')
         parser.add_argument(
             '--tokenizer',
@@ -173,6 +183,9 @@ class EngineArgs:
             'always use the slow tokenizer.')
         parser.add_argument('--trust-remote-code',
                             action='store_true',
+                            default=os.getenv('TRUST_REMOTE_CODE',
+                                              'false').lower()
+                            in ('true', '1', 't'),
                             help='Trust remote code from huggingface.')
         parser.add_argument('--download-dir',
                             type=nullable_str,
@@ -237,11 +250,13 @@ class EngineArgs:
             'FP8_E5M2 (without scaling) is only supported on cuda version'
             'greater than 11.8. On ROCm (AMD GPU), FP8_E4M3 is instead '
             'supported for common inference criteria.')
-        parser.add_argument('--max-model-len',
-                            type=int,
-                            default=EngineArgs.max_model_len,
-                            help='Model context length. If unspecified, will '
-                            'be automatically derived from the model config.')
+        parser.add_argument(
+            '--max-model-len',
+            type=int,
+            default=int(os.getenv('MAX_MODEL_LEN'))
+            if os.getenv('MAX_MODEL_LEN') else EngineArgs.max_model_len,
+            help='Model context length. If unspecified, will '
+            'be automatically derived from the model config.')
         parser.add_argument(
             '--guided-decoding-backend',
             type=str,
@@ -268,12 +283,16 @@ class EngineArgs:
         parser.add_argument('--pipeline-parallel-size',
                             '-pp',
                             type=int,
-                            default=EngineArgs.pipeline_parallel_size,
+                            default=int(
+                                os.getenv('PIPELINE_PARALLEL_SIZE',
+                                          EngineArgs.pipeline_parallel_size)),
                             help='Number of pipeline stages.')
         parser.add_argument('--tensor-parallel-size',
                             '-tp',
                             type=int,
-                            default=EngineArgs.tensor_parallel_size,
+                            default=int(
+                                os.getenv('TENSOR_PARALLEL_SIZE',
+                                          EngineArgs.tensor_parallel_size)),
                             help='Number of tensor parallel replicas.')
         parser.add_argument(
             '--max-parallel-loading-workers',
@@ -351,13 +370,17 @@ class EngineArgs:
             'of GPU blocks. Used for testing preemption.')
         parser.add_argument('--max-num-batched-tokens',
                             type=int,
-                            default=EngineArgs.max_num_batched_tokens,
+                            default=int(os.getenv('MAX_NUM_BATCHED_TOKENS'))
+                            if os.getenv('MAX_NUM_BATCHED_TOKENS') else
+                            EngineArgs.max_num_batched_tokens,
                             help='Maximum number of batched tokens per '
                             'iteration.')
-        parser.add_argument('--max-num-seqs',
-                            type=int,
-                            default=EngineArgs.max_num_seqs,
-                            help='Maximum number of sequences per iteration.')
+        parser.add_argument(
+            '--max-num-seqs',
+            type=int,
+            default=int(os.getenv('MAX_NUM_SEQS'))
+            if os.getenv('MAX_NUM_SEQS') else EngineArgs.max_num_seqs,
+            help='Maximum number of sequences per iteration.')
         parser.add_argument(
             '--max-logprobs',
             type=int,
@@ -392,6 +415,9 @@ class EngineArgs:
                             'performance of the scaled model.')
         parser.add_argument('--enforce-eager',
                             action='store_true',
+                            default=os.getenv('ENFORCE_EAGER',
+                                              'false').lower()
+                            in ('true', '1', 't'),
                             help='Always use eager-mode PyTorch. If False, '
                             'will use eager mode and CUDA graph in hybrid '
                             'for maximal performance and flexibility.')
@@ -411,7 +437,9 @@ class EngineArgs:
                             'larger than this, we fall back to eager mode.')
         parser.add_argument('--disable-custom-all-reduce',
                             action='store_true',
-                            default=EngineArgs.disable_custom_all_reduce,
+                            default=os.getenv('DISABLE_CUSTOM_ALL_REDUCE',
+                                              'false').lower()
+                            in ('true', '1', 't'),
                             help='See ParallelConfig.')
         parser.add_argument('--tokenizer-pool-size',
                             type=int,
@@ -435,15 +463,20 @@ class EngineArgs:
         # LoRA related configs
         parser.add_argument('--enable-lora',
                             action='store_true',
+                            default=os.getenv('ENABLE_LORA', 'false').lower()
+                            in ('true', '1', 't'),
                             help='If True, enable handling of LoRA adapters.')
         parser.add_argument('--max-loras',
                             type=int,
-                            default=EngineArgs.max_loras,
+                            default=int(os.getenv('MAX_LORAS')) if
+                            os.getenv('MAX_LORAS') else EngineArgs.max_loras,
                             help='Max number of LoRAs in a single batch.')
-        parser.add_argument('--max-lora-rank',
-                            type=int,
-                            default=EngineArgs.max_lora_rank,
-                            help='Max LoRA rank.')
+        parser.add_argument(
+            '--max-lora-rank',
+            type=int,
+            default=int(os.getenv('MAX_LORA_RANK'))
+            if os.getenv('MAX_LORA_RANK') else EngineArgs.max_lora_rank,
+            help='Max LoRA rank.')
         parser.add_argument(
             '--lora-extra-vocab-size',
             type=int,
@@ -472,7 +505,8 @@ class EngineArgs:
         parser.add_argument(
             '--max-cpu-loras',
             type=int,
-            default=EngineArgs.max_cpu_loras,
+            default=int(os.getenv('MAX_CPU_LORAS'))
+            if os.getenv('MAX_CPU_LORAS') else EngineArgs.max_cpu_loras,
             help=('Maximum number of LoRAs to store in CPU memory. '
                   'Must be >= than max_num_seqs. '
                   'Defaults to max_num_seqs.'))
@@ -640,7 +674,7 @@ class EngineArgs:
             "--served-model-name",
             nargs="+",
             type=str,
-            default=None,
+            default=get_model_names(os.getenv('SERVED_MODEL_NAME')),
             help="The model name(s) used in the API. If multiple "
             "names are provided, the server will respond to any "
             "of the provided names. The model name in the model "

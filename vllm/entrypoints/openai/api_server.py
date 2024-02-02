@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import inspect
 import re
+import os
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Optional, Set
@@ -9,11 +10,14 @@ from typing import Optional, Set
 import fastapi
 import uvicorn
 from fastapi import APIRouter, Request
+import boto3
+import tarfile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from prometheus_client import make_asgi_app
 from starlette.routing import Mount
+from pydantic import ValidationError
 
 import vllm.envs as envs
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -22,20 +26,28 @@ from vllm.entrypoints.logger import RequestLogger
 from vllm.entrypoints.openai.cli_args import make_arg_parser
 # yapf conflicts with isort for this block
 # yapf: disable
-from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
-                                              ChatCompletionResponse,
-                                              CompletionRequest,
-                                              DetokenizeRequest,
-                                              DetokenizeResponse,
-                                              EmbeddingRequest, ErrorResponse,
-                                              TokenizeRequest,
-                                              TokenizeResponse)
+from vllm.entrypoints.openai.protocol import (
+    AddLoRARequest,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    CompletionRequest,
+    DetokenizeRequest,
+    DetokenizeResponse,
+    EmbeddingRequest,
+    ErrorResponse,
+    InvocationRequest,
+    TokenizeRequest,
+    TokenizeChatRequest,
+    TokenizeCompletionRequest,
+    TokenizeResponse,
+)
 # yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
 from vllm.entrypoints.openai.serving_embedding import OpenAIServingEmbedding
 from vllm.entrypoints.openai.serving_tokenization import (
     OpenAIServingTokenization)
+from vllm.entrypoints.openai.serving_engine import LoRAModulePath
 from vllm.logger import init_logger
 from vllm.usage.usage_lib import UsageContext
 from vllm.utils import FlexibleArgumentParser
@@ -53,6 +65,10 @@ openai_serving_tokenization: OpenAIServingTokenization
 logger = init_logger('vllm.entrypoints.openai.api_server')
 
 _running_tasks: Set[asyncio.Task] = set()
+
+s3_client = boto3.client("s3",
+                         region_name=os.getenv("AWS_REGION", "us-west-2"))
+LORA_FOLDER_PATH = "/tmp/lora_modules"
 
 
 @asynccontextmanager
@@ -80,6 +96,46 @@ def mount_metrics(app: fastapi.FastAPI):
     # Workaround for 307 Redirect for /metrics
     metrics_route.path_regex = re.compile('^/metrics(?P<path>.*)$')
     app.routes.append(metrics_route)
+
+
+def parse_tokenize_request(payload: dict) -> TokenizeRequest:
+    try:
+        return TokenizeCompletionRequest.model_validate(payload)
+    except ValidationError:
+        return TokenizeChatRequest.model_validate(payload)
+
+
+@router.get("/ping")
+async def ping() -> Response:
+    return await health()
+
+
+@router.post("/invocations")
+async def invocations(request: InvocationRequest, raw_request: Request):
+    if request.endpoint == "/models":
+        return await show_available_models()
+    elif request.endpoint == "/chat/completions":
+        payload = ChatCompletionRequest.model_validate(request.payload)
+        return await create_chat_completion(payload, raw_request)
+    elif request.endpoint == "/completions":
+        payload = CompletionRequest.model_validate(request.payload)
+        return await create_completion(payload, raw_request)
+    elif request.endpoint == "/tokenize":
+        payload = parse_tokenize_request(request.payload)
+        return await tokenize(payload)
+    elif request.endpoint == "/detokenize":
+        payload = DetokenizeRequest.model_validate(request.payload)
+        return await detokenize(payload)
+    elif request.endpoint == "/embeddings":
+        payload = EmbeddingRequest.model_validate(request.payload)
+        return await create_embedding(payload, raw_request)
+    elif request.endpoint == "/loras":
+        payload = AddLoRARequest.model_validate(request.payload)
+        return await add_lora(payload, raw_request)
+    else:
+        err = openai_serving_chat.create_error_response(
+            message=f"Endpoint {request.endpoint} not found")
+        return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
 
 
 @router.get("/health")
@@ -111,10 +167,82 @@ async def detokenize(request: DetokenizeRequest):
         return JSONResponse(content=generator.model_dump())
 
 
-@router.get("/v1/models")
+@router.get("/models")
 async def show_available_models():
     models = await openai_serving_completion.show_available_models()
     return JSONResponse(content=models.model_dump())
+
+
+@router.post("/loras")
+async def add_lora(request: AddLoRARequest, raw_request: Request):
+    for lora_request in openai_serving_chat.lora_requests:
+        if lora_request.lora_name == request.lora_name:
+            return JSONResponse(content={
+                "error":
+                f"LoRA module {request.lora_name} already exists."
+            },
+                                status_code=HTTPStatus.BAD_REQUEST)
+
+    if request.s3_uri and request.local_path:
+        return JSONResponse(content={
+            "error":
+            "Both s3_uri and local_path cannot be provided."
+        },
+                            status_code=HTTPStatus.BAD_REQUEST)
+
+    if request.s3_uri is None and request.local_path is None:
+        return JSONResponse(
+            content={"error": "Either s3_uri or local_path must be provided."},
+            status_code=HTTPStatus.BAD_REQUEST)
+
+    if request.local_path:
+        lora_dir = request.local_path
+        logger.info(f"Loading LoRA module from local path: {lora_dir}")
+    else:
+        lora_dir = f"{LORA_FOLDER_PATH}/{request.lora_name}"
+        logger.info(f"Loading LoRA module from s3: {request.s3_uri}")
+        logger.info(f"LoRA module will be stored in: {lora_dir}")
+
+        # if lora path do not exists create it
+        if not os.path.exists(lora_dir):
+            logger.info(f"Creating lora module directory: {lora_dir}")
+            os.makedirs(lora_dir)
+
+        s3_uri = request.s3_uri
+        s3_bucket = s3_uri.split("/")[2]
+        s3_key = s3_uri.split("/", 3)[3]
+
+        # download lora module from s3
+        try:
+            logger.info(
+                f"Downloading lora module from s3: {s3_uri} ({s3_bucket}/{s3_key})"
+            )
+            s3_client.download_file(s3_bucket, s3_key,
+                                    f"{lora_dir}/model.tar.gz")
+        except Exception as e:
+            return JSONResponse(content={
+                "error":
+                f"Error downloading lora module from s3: {e}"
+            },
+                                status_code=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+        # extract lora module
+        with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
+            tar.extractall(path=lora_dir)
+
+        # remove tar file
+        os.remove(f"{lora_dir}/model.tar.gz")
+
+        # list directory and print files
+        logger.info(f"Extracted lora module files:")
+        for file in os.listdir(lora_dir):
+            logger.info(f"  - {file}")
+
+    lora = LoRAModulePath(request.lora_name, lora_dir)
+    await openai_serving_completion._add_lora(lora=lora)
+    await openai_serving_chat._add_lora(lora=lora)
+    await openai_serving_tokenization._add_lora(lora=lora)
+    return {"success": True}
 
 
 @router.get("/version")
@@ -123,7 +251,7 @@ async def show_version():
     return JSONResponse(content=ver)
 
 
-@router.post("/v1/chat/completions")
+@router.post("/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest,
                                  raw_request: Request):
     generator = await openai_serving_chat.create_chat_completion(
@@ -139,7 +267,7 @@ async def create_chat_completion(request: ChatCompletionRequest,
         return JSONResponse(content=generator.model_dump())
 
 
-@router.post("/v1/completions")
+@router.post("/completions")
 async def create_completion(request: CompletionRequest, raw_request: Request):
     generator = await openai_serving_completion.create_completion(
         request, raw_request)
@@ -153,7 +281,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
         return JSONResponse(content=generator.model_dump())
 
 
-@router.post("/v1/embeddings")
+@router.post("/embeddings")
 async def create_embedding(request: EmbeddingRequest, raw_request: Request):
     generator = await openai_serving_embedding.create_embedding(
         request, raw_request)
@@ -192,7 +320,7 @@ def build_app(args):
             root_path = "" if args.root_path is None else args.root_path
             if request.method == "OPTIONS":
                 return await call_next(request)
-            if not request.url.path.startswith(f"{root_path}/v1"):
+            if not request.url.path.startswith(f"{root_path}/"):
                 return await call_next(request)
             if request.headers.get("Authorization") != "Bearer " + token:
                 return JSONResponse(content={"error": "Unauthorized"},
