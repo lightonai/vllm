@@ -266,6 +266,15 @@ class ChatCompletionRequest(OpenAIBaseModel):
         description=(
             "If specified, will override the default whitespace pattern "
             "for guided json decoding."))
+    json_schema: Optional[Union[str, dict, BaseModel]] = Field(
+        default=None,
+        description=("If specified, the output will follow the JSON schema."),
+    )
+    regex: Optional[str] = Field(
+        default=None,
+        description=(
+            "If specified, the output will follow the regex pattern."),
+    )
 
     # doc: end-chat-completion-extra-params
 
@@ -354,6 +363,15 @@ class ChatCompletionRequest(OpenAIBaseModel):
     def check_guided_decoding_count(cls, data):
         if isinstance(data, ValueError):
             raise data
+
+        regex, guided_regex = data.get('regex'), data.get('guided_regex')
+        if regex is not None and guided_regex is None:
+            data['guided_regex'] = regex
+
+        json_schema, guided_json = data.get('json_schema'), data.get(
+            'guided_json')
+        if json_schema is not None and guided_json is None:
+            data['guided_json'] = json_schema
 
         guide_count = sum([
             "guided_json" in data and data["guided_json"] is not None,
@@ -508,6 +526,15 @@ class CompletionRequest(OpenAIBaseModel):
         description=(
             "If specified, will override the default whitespace pattern "
             "for guided json decoding."))
+    json_schema: Optional[Union[str, dict, BaseModel]] = Field(
+        default=None,
+        description=("If specified, the output will follow the JSON schema."),
+    )
+    regex: Optional[str] = Field(
+        default=None,
+        description=(
+            "If specified, the output will follow the regex pattern."),
+    )
 
     # doc: end-completion-extra-params
 
@@ -564,6 +591,15 @@ class CompletionRequest(OpenAIBaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_guided_decoding_count(cls, data):
+        regex, guided_regex = data.get('regex'), data.get('guided_regex')
+        if regex is not None and guided_regex is None:
+            data['guided_regex'] = regex
+
+        json_schema, guided_json = data.get('json_schema'), data.get(
+            'guided_json')
+        if json_schema is not None and guided_json is None:
+            data['guided_json'] = json_schema
+
         guide_count = sum([
             "guided_json" in data and data["guided_json"] is not None,
             "guided_regex" in data and data["guided_regex"] is not None,
@@ -617,6 +653,12 @@ class EmbeddingRequest(OpenAIBaseModel):
 
     def to_pooling_params(self):
         return PoolingParams(additional_data=self.additional_data)
+
+
+class AddLoRARequest(BaseModel):
+    lora_name: str
+    s3_uri: Optional[str] = None
+    local_path: Optional[str] = None
 
 
 class CompletionLogProbs(OpenAIBaseModel):
@@ -878,3 +920,8 @@ class DetokenizeRequest(OpenAIBaseModel):
 
 class DetokenizeResponse(OpenAIBaseModel):
     prompt: str
+
+
+class InvocationRequest(BaseModel):
+    endpoint: str
+    payload: Optional[Any]

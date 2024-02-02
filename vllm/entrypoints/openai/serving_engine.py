@@ -105,6 +105,14 @@ class OpenAIServing:
         self.request_logger = request_logger
         self.return_tokens_as_token_ids = return_tokens_as_token_ids
 
+    async def _add_lora(self, lora: LoRAModulePath):
+        self.lora_requests.append(
+            LoRARequest(
+                lora_name=lora.name,
+                lora_int_id=len(self.lora_requests) + 1,
+                lora_path=lora.path,
+            ))
+
     async def show_available_models(self) -> ModelList:
         """Show available models. Right now we only have one model."""
         model_cards = [
