@@ -1,3 +1,4 @@
+import os
 import argparse
 import dataclasses
 from dataclasses import dataclass
@@ -80,7 +81,7 @@ class EngineArgs:
         parser.add_argument(
             '--model',
             type=str,
-            default='facebook/opt-125m',
+            default=os.getenv('MODEL', 'facebook/opt-125m'),
             help='name or path of the huggingface model to use')
         parser.add_argument(
             '--tokenizer',
@@ -160,7 +161,7 @@ class EngineArgs:
             'lower than 11.8.')
         parser.add_argument('--max-model-len',
                             type=int,
-                            default=EngineArgs.max_model_len,
+                            default=int(os.getenv('MAX_MODEL_LEN')) if os.getenv('MAX_MODEL_LEN') else None,
                             help='model context length. If unspecified, '
                             'will be automatically derived from the model.')
         # Parallel arguments
@@ -171,12 +172,12 @@ class EngineArgs:
         parser.add_argument('--pipeline-parallel-size',
                             '-pp',
                             type=int,
-                            default=EngineArgs.pipeline_parallel_size,
+                            default=int(os.getenv('PIPELINE_PARALLEL_SIZE', EngineArgs.pipeline_parallel_size)),
                             help='number of pipeline stages')
         parser.add_argument('--tensor-parallel-size',
                             '-tp',
                             type=int,
-                            default=EngineArgs.tensor_parallel_size,
+                            default=int(os.getenv('TENSOR_PARALLEL_SIZE', EngineArgs.tensor_parallel_size)),
                             help='number of tensor parallel replicas')
         parser.add_argument(
             '--max-parallel-loading-workers',
