@@ -5,6 +5,7 @@ from typing import (AsyncGenerator, AsyncIterator, Callable, Dict, List,
 from typing import Sequence as GenericSequence
 from typing import Tuple, Union, cast
 
+import uuid
 from fastapi import Request
 
 from vllm.config import ModelConfig
@@ -84,7 +85,7 @@ class OpenAIServingCompletion(OpenAIServing):
                 "suffix is not currently supported")
 
         model_name = self.served_model_names[0]
-        request_id = f"cmpl-{random_uuid()}"
+        request_id = str(uuid.uuid4())
         created_time = int(time.time())
 
         # Schedule the request and get the result generator.

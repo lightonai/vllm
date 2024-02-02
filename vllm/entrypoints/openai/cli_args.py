@@ -6,6 +6,7 @@ purposes.
 
 import argparse
 import json
+import os
 import ssl
 from typing import List, Optional, Sequence, Union
 
@@ -57,6 +58,16 @@ class PromptAdapterParserAction(argparse.Action):
         setattr(namespace, self.dest, adapter_list)
 
 
+def get_lora_list(lora_modules):
+    if not lora_modules:
+        return None
+    lora_list = []
+    for item in lora_modules.split(' '):
+        name, path = item.split('=')
+        lora_list.append(LoRAModulePath(name, path))
+    return lora_list
+
+
 def make_arg_parser(parser: FlexibleArgumentParser) -> FlexibleArgumentParser:
     parser.add_argument("--host",
                         type=nullable_str,
@@ -92,7 +103,7 @@ def make_arg_parser(parser: FlexibleArgumentParser) -> FlexibleArgumentParser:
     parser.add_argument(
         "--lora-modules",
         type=nullable_str,
-        default=None,
+        default=get_lora_list(os.getenv('LORA_MODULES', None)),
         nargs='+',
         action=LoRAParserAction,
         help="LoRA module configurations in the format name=path. "

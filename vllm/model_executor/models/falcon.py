@@ -46,6 +46,9 @@ from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import IntermediateTensors
 from vllm.transformers_utils.configs import RWConfig
+from vllm.config import LoRAConfig
+
+from .interfaces import SupportsLoRA
 
 FalconConfig = Union[HF_FalconConfig, RWConfig]
 
@@ -144,12 +147,12 @@ class FalconAttention(nn.Module):
             rope_theta = getattr(config, "rope_theta", 10000)
             max_position_embeddings = getattr(config,
                                               "max_position_embeddings", 8192)
-            self.rotary_emb = get_rope(
-                self.head_dim,
-                rotary_dim=self.head_dim,
-                max_position=max_position_embeddings,
-                base=rope_theta,
-            )
+            self.rotary_emb = get_rope(self.head_dim,
+                                       rotary_dim=self.head_dim,
+                                       max_position=max_position_embeddings,
+                                       base=rope_theta,
+                                       rope_scaling=getattr(
+                                           config, "rope_scaling", None))
             self.attn = Attention(self.num_heads,
                                   self.head_dim,
                                   self.inv_norm_factor,
@@ -333,6 +336,7 @@ class FalconModel(nn.Module):
         config: FalconConfig,
         cache_config: Optional[CacheConfig] = None,
         quant_config: Optional[QuantizationConfig] = None,
+        lora_config: Optional[LoRAConfig] = None,
     ):
         super().__init__()
         self.config = config
@@ -375,18 +379,31 @@ class FalconModel(nn.Module):
         return hidden_states
 
 
-class FalconForCausalLM(nn.Module):
+class FalconForCausalLM(nn.Module, SupportsLoRA):
+    packed_modules_mapping = {
+        "query_key_value": ["query_key_value"],
+    }
+    supported_lora_modules = [
+        'query_key_value', 'dense', 'dense_h_to_4h', 'dense_4h_to_h'
+    ]
+    embedding_modules = {
+        "word_embeddings": "input_embeddings",
+        "lm_head": "output_embeddings",
+    }
+    embedding_padding_modules = ["lm_head"]
 
     def __init__(
         self,
         config: FalconConfig,
         cache_config: Optional[CacheConfig] = None,
         quant_config: Optional[QuantizationConfig] = None,
+        lora_config: Optional[LoRAConfig] = None,
     ):
         super().__init__()
         self.config = config
         self.quant_config = quant_config
-        self.transformer = FalconModel(config, cache_config, quant_config)
+        self.transformer = FalconModel(config, cache_config, quant_config,
+                                       lora_config)
         # only Falcon-11B doesn't share lm_head weight with word embeddings
         # and previous Falcon model doesn't have tie_word_embeddings config
         # so we set tie_word_embeddings to True by default

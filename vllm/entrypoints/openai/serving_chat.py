@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+import uuid
 from typing import (AsyncGenerator, AsyncIterator, Callable, Dict, Final, List,
                     Optional)
 from typing import Sequence as GenericSequence
@@ -37,7 +38,7 @@ from vllm.sequence import Logprob
 from vllm.tracing import (contains_trace_headers, extract_trace_headers,
                           log_tracing_disabled_warning)
 from vllm.transformers_utils.tokenizer import AnyTokenizer, MistralTokenizer
-from vllm.utils import iterate_with_cancellation, random_uuid
+from vllm.utils import iterate_with_cancellation
 
 logger = init_logger(__name__)
 
@@ -167,7 +168,7 @@ class OpenAIServingChat(OpenAIServing):
                 "\"auto\" tool choice requires "
                 "--enable-auto-tool-choice and --tool-call-parser to be set")
 
-        request_id = f"chat-{random_uuid()}"
+        request_id = str(uuid.uuid4())
         try:
             guided_decode_logits_processor = (
                 await self._guided_decode_logits_processor(request, tokenizer))
