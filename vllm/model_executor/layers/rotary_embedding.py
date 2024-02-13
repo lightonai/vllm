@@ -29,6 +29,9 @@ import torch.nn as nn
 
 from vllm.model_executor.custom_op import CustomOp
 from vllm.utils import is_tpu
+from vllm.logger import init_logger
+
+logger = init_logger(__name__)
 
 
 def _rotate_neox(x: torch.Tensor) -> torch.Tensor:
