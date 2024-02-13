@@ -1062,6 +1062,9 @@ def _get_and_verify_max_len(
         if rope_scaling["type"] == "yarn":
             derived_max_model_len = rope_scaling[
                 "original_max_position_embeddings"]
+        elif rope_scaling["type"] == "ntk_yarn":
+            derived_max_model_len = rope_scaling[
+                "original_max_position_embeddings"]
         derived_max_model_len *= scaling_factor
 
     if max_model_len is None:
