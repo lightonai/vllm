@@ -29,6 +29,9 @@ import torch.nn as nn
 
 from vllm.model_executor.custom_op import CustomOp
 from vllm.utils import is_tpu
+from vllm.logger import init_logger
+
+logger = init_logger(__name__)
 
 
 def _rotate_neox(x: torch.Tensor) -> torch.Tensor:
@@ -801,6 +804,7 @@ def get_rope(
         rotary_emb = RotaryEmbedding(head_size, rotary_dim, max_position, base,
                                      is_neox_style, dtype)
     else:
+        logger.info(f"Using RoPE scaling: {rope_scaling}")
         scaling_type = rope_scaling["type"]
         # The correct one should be "longrope" but keep "su" here
         # for backward compatible
