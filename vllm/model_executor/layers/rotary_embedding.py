@@ -27,7 +27,10 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
+from vllm.logger import init_logger
 from vllm._C import ops
+
+logger = init_logger(__name__)
 
 
 def _rotate_neox(x: torch.Tensor) -> torch.Tensor:
@@ -393,6 +396,7 @@ def get_rope(
         rotary_emb = RotaryEmbedding(head_size, rotary_dim, max_position, base,
                                      is_neox_style)
     else:
+        logger.info(f"Using RoPE scaling: {rope_scaling}")
         scaling_type = rope_scaling["type"]
         scaling_factor = rope_scaling["factor"]
         if scaling_type == "linear":
