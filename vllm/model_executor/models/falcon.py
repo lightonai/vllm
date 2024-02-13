@@ -148,6 +148,7 @@ class FalconAttention(nn.Module):
                 rotary_dim=self.head_dim,
                 max_position=max_position_embeddings,
                 base=rope_theta,
+                rope_scaling=getattr(config, "rope_scaling", None)
             )
             self.attn = Attention(self.num_heads,
                                   self.head_dim,
