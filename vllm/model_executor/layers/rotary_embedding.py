@@ -27,7 +27,10 @@ from typing import Any, Dict, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
+from vllm.logger import init_logger
 from vllm._C import ops
+
+logger = init_logger(__name__)
 
 
 def _rotate_neox(x: torch.Tensor) -> torch.Tensor:
@@ -325,6 +328,43 @@ class YaRNScalingRotaryEmbedding(RotaryEmbedding):
         cache = torch.cat((cos, sin), dim=-1)
         return cache
 
+class NTKYaRNScalingRotaryEmbedding(RotaryEmbedding):
+    """
+    NTK-YaRN as presented by LightOn
+    https://huggingface.co/lightonai/alfred-40b-1023
+    """
+
+    def __init__(
+        self,
+        head_size: int,
+        rotary_dim: int,
+        max_position_embeddings: int,
+        base: int,
+        is_neox_style: bool,
+        scaling_factor: float,
+        *,
+        attn_factor: float = 1,
+    ) -> None:
+        self.scaling_factor = scaling_factor
+        self.attn_factor = attn_factor
+        # Get n-d magnitude scaling corrected for interpolation
+        self.mscale = float(
+            _yarn_get_mscale(self.scaling_factor) * attn_factor)
+        super().__init__(head_size, rotary_dim, max_position_embeddings, base,
+                         is_neox_style)
+
+    def _compute_cos_sin_cache(self) -> torch.Tensor:
+        max_len = self.max_position_embeddings * self.scaling_factor
+        base = self.base * (
+            (self.scaling_factor + 1))**(self.rotary_dim /
+                                         (self.rotary_dim - 2))
+        inv_freq = self._compute_inv_freq(base)
+        t = torch.arange(max_len, dtype=torch.float, device="cuda")
+        freqs = torch.einsum("i,j -> ij", t, inv_freq)
+        cos = (freqs.cos() * self.mscale)
+        sin = (freqs.sin() * self.mscale)
+        cache = torch.cat((cos, sin), dim=-1)
+        return cache
 
 _ROPE_DICT: Dict[Tuple, RotaryEmbedding] = {}
 
@@ -346,6 +386,7 @@ def get_rope(
         rotary_emb = RotaryEmbedding(head_size, rotary_dim, max_position, base,
                                      is_neox_style)
     else:
+        logger.info(f"Using RoPE scaling: {rope_scaling}")
         scaling_type = rope_scaling["type"]
         scaling_factor = rope_scaling["factor"]
         if scaling_type == "linear":
@@ -372,6 +413,15 @@ def get_rope(
                                                     base, is_neox_style,
                                                     scaling_factor,
                                                     **extra_kwargs)
+        elif scaling_type == "ntk_yarn":
+            original_max_position = rope_scaling[
+                "original_max_position_embeddings"]
+            assert max_position == original_max_position * scaling_factor
+
+            rotary_emb = NTKYaRNScalingRotaryEmbedding(head_size, rotary_dim,
+                                                    original_max_position,
+                                                    base, is_neox_style,
+                                                    scaling_factor)
         else:
             raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
     _ROPE_DICT[key] = rotary_emb
