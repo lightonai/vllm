@@ -143,7 +143,7 @@ class EngineArgs:
             'lower than 11.8.')
         parser.add_argument('--max-model-len',
                             type=int,
-                            default=int(os.getenv('MAX_MODEL_LEN')) if os.getenv('MAX_MODEL_LEN') else None,
+                            default=int(os.getenv('MAX_MODEL_LEN')) if os.getenv('MAX_MODEL_LEN') else EngineArgs.max_model_len,
                             help='model context length. If unspecified, '
                             'will be automatically derived from the model.')
         # Parallel arguments
