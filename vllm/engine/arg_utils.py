@@ -195,7 +195,7 @@ class EngineArgs:
             'supported for common inference criteria.')
         parser.add_argument('--max-model-len',
                             type=int,
-                            default=int(os.getenv('MAX_MODEL_LEN')) if os.getenv('MAX_MODEL_LEN') else None,
+                            default=int(os.getenv('MAX_MODEL_LEN')) if os.getenv('MAX_MODEL_LEN') else EngineArgs.max_model_len,
                             help='model context length. If unspecified, '
                             'will be automatically derived from the model.')
         parser.add_argument(
