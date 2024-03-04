@@ -321,6 +321,7 @@ class AsyncEngineArgs(EngineArgs):
     engine_use_ray: bool = False
     disable_log_requests: bool = False
     max_log_len: Optional[int] = None
+    max_running_time_per_request: Optional[int] = None
 
     @staticmethod
     def add_cli_args(
@@ -339,4 +340,11 @@ class AsyncEngineArgs(EngineArgs):
                             help='max number of prompt characters or prompt '
                             'ID numbers being printed in log. '
                             'Default: unlimited.')
+        parser.add_argument(
+            "--max-running-time-per-request",
+            type=int,
+            default=int(os.getenv('MAX_RUNNING_TIME_PER_REQUEST')) if os.getenv('MAX_RUNNING_TIME_PER_REQUEST') else AsyncEngineArgs.max_running_time_per_request,
+            help=('Maximum running time (in seconds) allowed for each request. '
+                  'If the request takes longer than this time, it will be terminated. '
+                  'If not specified, the request will not be terminated.'))
         return parser

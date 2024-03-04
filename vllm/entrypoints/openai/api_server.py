@@ -86,7 +86,7 @@ def parse_args():
     )
     parser.add_argument("--served-model-name",
                         type=str,
-                        default=None,
+                        default=os.getenv('SERVED_MODEL_NAME', None),
                         help="The model name used in the API. If not "
                         "specified, the model name will be the same as "
                         "the huggingface name.")
