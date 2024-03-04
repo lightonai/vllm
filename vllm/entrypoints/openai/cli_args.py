@@ -6,6 +6,7 @@ purposes.
 
 import argparse
 import json
+import os
 import ssl
 
 from vllm.engine.arg_utils import AsyncEngineArgs, nullable_str
