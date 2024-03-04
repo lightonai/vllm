@@ -303,6 +303,7 @@ class AsyncLLMEngine:
                  log_requests: bool = True,
                  max_log_len: Optional[int] = None,
                  start_engine_loop: bool = True,
+                 max_running_time_per_request: Optional[int] = None,
                  **kwargs) -> None:
         self.worker_use_ray = worker_use_ray
         self.engine_use_ray = engine_use_ray
@@ -316,6 +317,7 @@ class AsyncLLMEngine:
         # collected
         self._background_loop_unshielded = None
         self.start_engine_loop = start_engine_loop
+        self.max_running_time_per_request = max_running_time_per_request
         self._request_tracker: Optional[RequestTracker] = None
         self._errored_with: Optional[BaseException] = None
 
@@ -355,6 +357,7 @@ class AsyncLLMEngine:
             max_log_len=engine_args.max_log_len,
             start_engine_loop=start_engine_loop,
             usage_context=usage_context,
+            max_running_time_per_request=engine_args.max_running_time_per_request,
         )
         return engine
 
@@ -425,6 +428,26 @@ class AsyncLLMEngine:
         """Kick the engine to process the waiting requests.
 
         Returns True if there are in-progress requests."""
+
+        if self.max_running_time_per_request:      
+            # Fix the current time.
+            now = time.time()
+
+            requests_to_be_aborted_due_to_timeout = []
+            for seq_group in self.engine.scheduler.running:
+                if seq_group.metrics.first_scheduled_time is None:
+                    continue
+                time_in_the_queue = now - seq_group.metrics.first_scheduled_time
+                # if the sequence group has been in the runnning queue for more than `max_running_time_per_request` seconds
+                # abort the sequence group.
+                if time_in_the_queue > self.max_running_time_per_request:
+                    logger.warning(
+                        f"Request {seq_group.request_id} has been in the "
+                        f"queue for {time_in_the_queue:.2f} seconds. Abort.")
+                    requests_to_be_aborted_due_to_timeout.append(seq_group.request_id)
+
+            for req_id in requests_to_be_aborted_due_to_timeout:
+                await self.abort(req_id)
 
         new_requests, finished_requests = (
             self._request_tracker.get_new_and_finished_requests())
