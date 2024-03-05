@@ -17,17 +17,24 @@ import vllm
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.entrypoints.openai.cli_args import make_arg_parser
-from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
-                                              CompletionRequest, ErrorResponse)
+from vllm.usage.usage_lib import UsageContext
+from vllm.entrypoints.openai.protocol import (
+    ChatCompletionRequest,
+    CompletionRequest,
+    ErrorResponse,
+    InvocationRequest,
+    TokenizeCompletionRequest,
+)
+from vllm.logger import init_logger
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
-from vllm.logger import init_logger
-from vllm.usage.usage_lib import UsageContext
+from vllm.entrypoints.openai.serving_tokenize import OpenAIServingTokenize
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds
 
 openai_serving_chat: OpenAIServingChat = None
 openai_serving_completion: OpenAIServingCompletion = None
+openai_serving_tokenize: OpenAIServingTokenize = None
 logger = init_logger(__name__)
 
 
@@ -71,7 +78,28 @@ async def health() -> Response:
     return Response(status_code=200)
 
 
-@app.get("/v1/models")
+@app.get("/ping")
+async def ping() -> Response:
+    """Health check."""
+    return Response(status_code=200)
+
+
+@app.post("/invocations")
+async def invocations(request: InvocationRequest, raw_request: Request):
+    if request.endpoint == "/models":
+        return await show_available_models()
+    elif request.endpoint == "/chat/completions":
+        return await create_chat_completion(request.payload, raw_request)
+    elif request.endpoint == "/completions":
+        return await create_completion(request.payload, raw_request)
+    elif request.endpoint == "/tokenize":
+        return await tokenize(request.payload)
+    else:
+        err = openai_serving_chat.create_error_response(message=f"Endpoint {request.endpoint} not found")
+        return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
+
+
+@app.get("/models")
 async def show_available_models():
     models = await openai_serving_chat.show_available_models()
     return JSONResponse(content=models.model_dump())
@@ -83,7 +111,7 @@ async def show_version():
     return JSONResponse(content=ver)
 
 
-@app.post("/v1/chat/completions")
+@app.post("/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest,
                                  raw_request: Request):
     generator = await openai_serving_chat.create_chat_completion(
@@ -98,7 +126,7 @@ async def create_chat_completion(request: ChatCompletionRequest,
         return JSONResponse(content=generator.model_dump())
 
 
-@app.post("/v1/completions")
+@app.post("/completions")
 async def create_completion(request: CompletionRequest, raw_request: Request):
     generator = await openai_serving_completion.create_completion(
         request, raw_request)
@@ -108,6 +136,16 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
     if request.stream:
         return StreamingResponse(content=generator,
                                  media_type="text/event-stream")
+    else:
+        return JSONResponse(content=generator.model_dump())
+
+
+@app.post("/tokenize")
+async def tokenize(request: TokenizeCompletionRequest):
+    generator = await openai_serving_tokenize.tokenize(request)
+    if isinstance(generator, ErrorResponse):
+        return JSONResponse(content=generator.model_dump(),
+                            status_code=generator.code)
     else:
         return JSONResponse(content=generator.model_dump())
 
@@ -128,7 +166,7 @@ if __name__ == "__main__":
         @app.middleware("http")
         async def authentication(request: Request, call_next):
             root_path = "" if args.root_path is None else args.root_path
-            if not request.url.path.startswith(f"{root_path}/v1"):
+            if not request.url.path.startswith(f"{root_path}/"):
                 return await call_next(request)
             if request.headers.get("Authorization") != "Bearer " + token:
                 return JSONResponse(content={"error": "Unauthorized"},
@@ -162,6 +200,9 @@ if __name__ == "__main__":
                                             args.chat_template)
     openai_serving_completion = OpenAIServingCompletion(
         engine, served_model, args.lora_modules)
+    openai_serving_tokenize = OpenAIServingTokenize(engine, served_model,
+                                            args.response_role,
+                                            args.chat_template)
 
     app.root_path = args.root_path
     uvicorn.run(app,
