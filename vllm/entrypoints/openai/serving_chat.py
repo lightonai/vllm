@@ -1,10 +1,11 @@
-import codecs
 import time
 from dataclasses import dataclass, field
 from typing import (AsyncGenerator, AsyncIterator, Awaitable, Dict, Iterable,
                     List, Optional)
 from typing import Sequence as GenericSequence
 from typing import TypedDict, Union, cast, final
+import uuid
+import codecs
 
 from fastapi import Request
 from openai.types.chat import (ChatCompletionContentPartImageParam,
@@ -236,7 +237,7 @@ class OpenAIServingChat(OpenAIServing):
             logger.error("Error in loading image data: %s", e)
             return self.create_error_response(str(e))
 
-        request_id = f"cmpl-{random_uuid()}"
+        request_id = str(uuid.uuid4())
         try:
             # Tokenize/detokenize depending on prompt format (string/token list)
             prompt_ids, prompt_text = self._validate_prompt_and_tokenize(

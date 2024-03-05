@@ -152,5 +152,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 ENV VLLM_USAGE_SOURCE production-docker-image
 
-ENTRYPOINT ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+RUN chmod +x vllm/entrypoint.sh
+ENTRYPOINT ["vllm/entrypoint.sh"]
 #################### OPENAI API SERVER ####################

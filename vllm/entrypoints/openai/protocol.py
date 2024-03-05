@@ -1,7 +1,7 @@
 # Adapted from
 # https://github.com/lm-sys/FastChat/blob/168ccc29d3f7edc50823016105c024fe2282732a/fastchat/protocol/openai_api_protocol.py
 import time
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Union, Any
 
 import openai.types.chat
 import torch
@@ -226,6 +226,15 @@ class ChatCompletionRequest(OpenAIBaseModel):
         description=(
             "If specified, will override the default whitespace pattern "
             "for guided json decoding."))
+    json_schema: Optional[Union[str, dict, BaseModel]] = Field(
+        default=None,
+        description=("If specified, the output will follow the JSON schema."),
+    )
+    regex: Optional[str] = Field(
+        default=None,
+        description=(
+            "If specified, the output will follow the regex pattern."),
+    )
 
     # doc: end-chat-completion-extra-params
 
@@ -286,6 +295,14 @@ class ChatCompletionRequest(OpenAIBaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_guided_decoding_count(cls, data):
+        regex, guided_regex = data.get('regex'), data.get('guided_regex')
+        if regex is not None and guided_regex is None:
+            data['guided_regex'] = regex
+
+        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        if json_schema is not None and guided_json is None:
+            data['guided_json'] = json_schema
+
         guide_count = sum([
             "guided_json" in data and data["guided_json"] is not None,
             "guided_regex" in data and data["guided_regex"] is not None,
@@ -411,6 +428,15 @@ class CompletionRequest(OpenAIBaseModel):
         description=(
             "If specified, will override the default whitespace pattern "
             "for guided json decoding."))
+    json_schema: Optional[Union[str, dict, BaseModel]] = Field(
+        default=None,
+        description=("If specified, the output will follow the JSON schema."),
+    )
+    regex: Optional[str] = Field(
+        default=None,
+        description=(
+            "If specified, the output will follow the regex pattern."),
+    )
 
     # doc: end-completion-extra-params
 
@@ -463,6 +489,14 @@ class CompletionRequest(OpenAIBaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_guided_decoding_count(cls, data):
+        regex, guided_regex = data.get('regex'), data.get('guided_regex')
+        if regex is not None and guided_regex is None:
+            data['guided_regex'] = regex
+
+        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        if json_schema is not None and guided_json is None:
+            data['guided_json'] = json_schema
+
         guide_count = sum([
             "guided_json" in data and data["guided_json"] is not None,
             "guided_regex" in data and data["guided_regex"] is not None,
@@ -508,6 +542,32 @@ class EmbeddingRequest(BaseModel):
     def to_pooling_params(self):
         return PoolingParams(additional_data=self.additional_data)
 
+
+class TokenizeCompletionRequest(BaseModel):
+    model: str
+    prompt: Optional[str] = None
+    messages: Optional[Union[str, List[Dict[str, str]]]] = None
+    add_generation_prompt: Optional[bool] = True
+
+
+class TokenizeResponse(BaseModel):
+    id: str
+    tokens: Any
+    text: str
+    n_tokens: int
+    model: str
+
+
+class InvocationRequest(BaseModel):
+    endpoint: str
+    payload: Optional[
+        Union[
+            ChatCompletionRequest,
+            CompletionRequest,
+            TokenizeCompletionRequest,
+        ]
+    ]
+    
 
 class CompletionLogProbs(OpenAIBaseModel):
     text_offset: List[int] = Field(default_factory=list)
