@@ -86,11 +86,17 @@ def deploy(
     )
     max_model_len = get_value(config_data, max_model_len, "max_model_len")
 
+    image_version = image.split(":")[-1].replace(".", "-")
+
     random_id = generate_random_string(5)
     name = model.split("/")[-1] if endpoint_name is None else endpoint_name
-    endpoint_name = "vllm-" + re.sub("[^0-9a-zA-Z]", "-", name) + "-" + random_id
+    endpoint_name = "vllm-" + image_version + "--" + re.sub("[^0-9a-zA-Z]", "-", name) + "-" + random_id
     model_name = f"{endpoint_name}-mdl"
     endpoint_config_name = f"{endpoint_name}-epc"
+
+    assert len(endpoint_name) <= 63, "Endpoint name must be less than 63 characters"
+    assert len(model_name) <= 63, "Model name must be less than 63 characters"
+    assert len(endpoint_config_name) <= 63, "Endpoint config name must be less than 63 characters"
 
     # get sagemaker image and role
     vllm_image_uri, role = get_sagemaker_vars(region, image)
