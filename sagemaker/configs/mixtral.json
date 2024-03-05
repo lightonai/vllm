@@ -1,6 +1,6 @@
 {
     "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-    "image": "vllm:latest",
+    "image": "vllm:0.3.3",
     "pipeline_parallel_size": 1,
     "tensor_parallel_size": 8,
     "sagemaker_instance_type": "ml.p4d.24xlarge",
