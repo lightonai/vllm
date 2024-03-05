@@ -29,7 +29,7 @@ from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
                                               DetokenizeResponse,
                                               EmbeddingRequest, ErrorResponse,
                                               TokenizeRequest,
-                                              TokenizeResponse)
+                                              TokenizeResponse, InvocationRequest, TokenizeCompletionRequest)
 # yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
@@ -89,6 +89,12 @@ async def health() -> Response:
     return Response(status_code=200)
 
 
+@router.get("/ping")
+async def ping() -> Response:
+    """Health check."""
+    return Response(status_code=200)
+
+
 @router.post("/tokenize")
 async def tokenize(request: TokenizeRequest):
     generator = await openai_serving_tokenization.create_tokenize(request)
@@ -106,12 +112,27 @@ async def detokenize(request: DetokenizeRequest):
     if isinstance(generator, ErrorResponse):
         return JSONResponse(content=generator.model_dump(),
                             status_code=generator.code)
+
+@router.post("/invocations")
+async def invocations(request: InvocationRequest, raw_request: Request):
+    if request.endpoint == "/models":
+        return await show_available_models()
+    elif request.endpoint == "/chat/completions":
+        return await create_chat_completion(request.payload, raw_request)
+    elif request.endpoint == "/completions":
+        return await create_completion(request.payload, raw_request)
+    elif request.endpoint == "/tokenize":
+        return await tokenize(request.payload)
+    elif request.endpoint == "/detokenize":
+        return await detokenize(request.payload)
+    elif request.endpoint == "/embeddings":
+        return await create_embedding(request.payload, raw_request)
     else:
-        assert isinstance(generator, DetokenizeResponse)
-        return JSONResponse(content=generator.model_dump())
+        err = openai_serving_chat.create_error_response(message=f"Endpoint {request.endpoint} not found")
+        return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
 
 
-@router.get("/v1/models")
+@router.get("/models")
 async def show_available_models():
     models = await openai_serving_completion.show_available_models()
     return JSONResponse(content=models.model_dump())
@@ -123,7 +144,7 @@ async def show_version():
     return JSONResponse(content=ver)
 
 
-@router.post("/v1/chat/completions")
+@router.post("/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest,
                                  raw_request: Request):
     generator = await openai_serving_chat.create_chat_completion(
@@ -139,7 +160,7 @@ async def create_chat_completion(request: ChatCompletionRequest,
         return JSONResponse(content=generator.model_dump())
 
 
-@router.post("/v1/completions")
+@router.post("/completions")
 async def create_completion(request: CompletionRequest, raw_request: Request):
     generator = await openai_serving_completion.create_completion(
         request, raw_request)
@@ -153,7 +174,7 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
         return JSONResponse(content=generator.model_dump())
 
 
-@router.post("/v1/embeddings")
+@router.post("/embeddings")
 async def create_embedding(request: EmbeddingRequest, raw_request: Request):
     generator = await openai_serving_embedding.create_embedding(
         request, raw_request)
@@ -192,7 +213,7 @@ def build_app(args):
             root_path = "" if args.root_path is None else args.root_path
             if request.method == "OPTIONS":
                 return await call_next(request)
-            if not request.url.path.startswith(f"{root_path}/v1"):
+            if not request.url.path.startswith(f"{root_path}/"):
                 return await call_next(request)
             if request.headers.get("Authorization") != "Bearer " + token:
                 return JSONResponse(content={"error": "Unauthorized"},

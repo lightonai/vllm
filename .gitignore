@@ -190,3 +190,4 @@ hip_compat.h
 
 # Benchmark dataset
 *.json
+!sagemaker/configs/*
