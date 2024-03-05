@@ -28,11 +28,12 @@ from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
                                               DetokenizeResponse,
                                               EmbeddingRequest, ErrorResponse,
                                               TokenizeRequest,
-                                              TokenizeResponse)
+                                              TokenizeResponse, InvocationRequest, TokenizeCompletionRequest)
 # yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
 from vllm.entrypoints.openai.serving_embedding import OpenAIServingEmbedding
+from vllm.entrypoints.openai.serving_tokenize import OpenAIServingTokenize
 from vllm.logger import init_logger
 from vllm.usage.usage_lib import UsageContext
 from vllm.version import __version__ as VLLM_VERSION
@@ -92,29 +93,32 @@ async def health() -> Response:
     return Response(status_code=200)
 
 
-@app.post("/tokenize")
-async def tokenize(request: TokenizeRequest):
-    generator = await openai_serving_completion.create_tokenize(request)
-    if isinstance(generator, ErrorResponse):
-        return JSONResponse(content=generator.model_dump(),
-                            status_code=generator.code)
+@app.get("/ping")
+async def ping() -> Response:
+    """Health check."""
+    return Response(status_code=200)
+
+
+@app.post("/invocations")
+async def invocations(request: InvocationRequest, raw_request: Request):
+    if request.endpoint == "/models":
+        return await show_available_models()
+    elif request.endpoint == "/chat/completions":
+        return await create_chat_completion(request.payload, raw_request)
+    elif request.endpoint == "/completions":
+        return await create_completion(request.payload, raw_request)
+    elif request.endpoint == "/tokenize":
+        return await tokenize(request.payload)
+    elif request.endpoint == "/detokenize":
+        return await detokenize(request.payload)
+    elif request.endpoint == "/embeddings":
+        return await create_embedding(request.payload, raw_request)
     else:
-        assert isinstance(generator, TokenizeResponse)
-        return JSONResponse(content=generator.model_dump())
+        err = openai_serving_chat.create_error_response(message=f"Endpoint {request.endpoint} not found")
+        return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
 
 
-@app.post("/detokenize")
-async def detokenize(request: DetokenizeRequest):
-    generator = await openai_serving_completion.create_detokenize(request)
-    if isinstance(generator, ErrorResponse):
-        return JSONResponse(content=generator.model_dump(),
-                            status_code=generator.code)
-    else:
-        assert isinstance(generator, DetokenizeResponse)
-        return JSONResponse(content=generator.model_dump())
-
-
-@app.get("/v1/models")
+@app.get("/models")
 async def show_available_models():
     models = await openai_serving_chat.show_available_models()
     return JSONResponse(content=models.model_dump())
@@ -126,7 +130,7 @@ async def show_version():
     return JSONResponse(content=ver)
 
 
-@app.post("/v1/chat/completions")
+@app.post("/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest,
                                  raw_request: Request):
     generator = await openai_serving_chat.create_chat_completion(
@@ -142,7 +146,7 @@ async def create_chat_completion(request: ChatCompletionRequest,
         return JSONResponse(content=generator.model_dump())
 
 
-@app.post("/v1/completions")
+@app.post("/completions")
 async def create_completion(request: CompletionRequest, raw_request: Request):
     generator = await openai_serving_completion.create_completion(
         request, raw_request)
@@ -156,7 +160,29 @@ async def create_completion(request: CompletionRequest, raw_request: Request):
         return JSONResponse(content=generator.model_dump())
 
 
-@app.post("/v1/embeddings")
+
+@app.post("/tokenize")
+async def tokenize(request: TokenizeCompletionRequest):
+    generator = await openai_serving_tokenize.tokenize(request)
+    if isinstance(generator, ErrorResponse):
+        return JSONResponse(content=generator.model_dump(),
+                            status_code=generator.code)
+    else:
+        return JSONResponse(content=generator.model_dump())
+
+
+@app.post("/detokenize")
+async def detokenize(request: DetokenizeRequest):
+    generator = await openai_serving_completion.create_detokenize(request)
+    if isinstance(generator, ErrorResponse):
+        return JSONResponse(content=generator.model_dump(),
+                            status_code=generator.code)
+    else:
+        assert isinstance(generator, DetokenizeResponse)
+        return JSONResponse(content=generator.model_dump())
+
+
+@app.post("/embeddings")
 async def create_embedding(request: EmbeddingRequest, raw_request: Request):
     generator = await openai_serving_embedding.create_embedding(
         request, raw_request)
@@ -185,7 +211,7 @@ if __name__ == "__main__":
             root_path = "" if args.root_path is None else args.root_path
             if request.method == "OPTIONS":
                 return await call_next(request)
-            if not request.url.path.startswith(f"{root_path}/v1"):
+            if not request.url.path.startswith(f"{root_path}/"):
                 return await call_next(request)
             if request.headers.get("Authorization") != "Bearer " + token:
                 return JSONResponse(content={"error": "Unauthorized"},
@@ -237,6 +263,11 @@ if __name__ == "__main__":
                                             args.chat_template)
     openai_serving_completion = OpenAIServingCompletion(
         engine, model_config, served_model_names, args.lora_modules)
+    openai_serving_tokenize = OpenAIServingTokenize(engine, model_config,
+                                            served_model_names,
+                                            args.response_role,
+                                            args.lora_modules,
+                                            args.chat_template)
     openai_serving_embedding = OpenAIServingEmbedding(engine, model_config,
                                                       served_model_names)
     app.root_path = args.root_path
