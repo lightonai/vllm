@@ -1,5 +1,6 @@
 import asyncio
 import time
+import uuid
 from fastapi import Request
 from typing import AsyncGenerator, AsyncIterator, Callable, List, Optional, Dict, Tuple
 from vllm.logger import init_logger
@@ -279,7 +280,7 @@ class OpenAIServingCompletion(OpenAIServing):
                 "suffix is not currently supported")
 
         model_name = request.model
-        request_id = f"cmpl-{random_uuid()}"
+        request_id = str(uuid.uuid4())
         created_time = int(time.monotonic())
 
         # Schedule the request and get the result generator.

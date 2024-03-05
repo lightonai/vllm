@@ -1,7 +1,7 @@
 # Adapted from
 # https://github.com/lm-sys/FastChat/blob/168ccc29d3f7edc50823016105c024fe2282732a/fastchat/protocol/openai_api_protocol.py
 import time
-from typing import Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Union, Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -89,6 +89,8 @@ class ChatCompletionRequest(BaseModel):
     guided_json: Optional[Union[str, dict, BaseModel]] = None
     guided_regex: Optional[str] = None
     guided_choice: Optional[List[str]] = None
+    json_schema: Optional[Union[str, dict, BaseModel]] = None
+    regex: Optional[str] = None
 
     def to_sampling_params(self) -> SamplingParams:
         if self.logprobs and not self.top_logprobs:
@@ -137,6 +139,14 @@ class ChatCompletionRequest(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_guided_decoding_count(cls, data):
+        regex, guided_regex = data.get('regex'), data.get('guided_regex')
+        if regex is not None and guided_regex is None:
+            data['guided_regex'] = regex
+
+        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        if json_schema is not None and guided_json is None:
+            data['guided_json'] = json_schema
+
         guide_count = sum([
             "guided_json" in data and data["guided_json"] is not None,
             "guided_regex" in data and data["guided_regex"] is not None,
@@ -183,6 +193,8 @@ class CompletionRequest(BaseModel):
     guided_json: Optional[Union[str, dict, BaseModel]] = None
     guided_regex: Optional[str] = None
     guided_choice: Optional[List[str]] = None
+    json_schema: Optional[Union[str, dict, BaseModel]] = None
+    regex: Optional[str] = None
 
     def to_sampling_params(self):
         echo_without_generation = self.echo and self.max_tokens == 0
@@ -230,6 +242,14 @@ class CompletionRequest(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_guided_decoding_count(cls, data):
+        regex, guided_regex = data.get('regex'), data.get('guided_regex')
+        if regex is not None and guided_regex is None:
+            data['guided_regex'] = regex
+
+        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        if json_schema is not None and guided_json is None:
+            data['guided_json'] = json_schema
+
         guide_count = sum([
             "guided_json" in data and data["guided_json"] is not None,
             "guided_regex" in data and data["guided_regex"] is not None,
@@ -241,6 +261,32 @@ class CompletionRequest(BaseModel):
                 "('guided_json', 'guided_regex' or 'guided_choice').")
         return data
 
+
+class TokenizeCompletionRequest(BaseModel):
+    model: str
+    prompt: Optional[str] = None
+    messages: Optional[Union[str, List[Dict[str, str]]]] = None
+    add_generation_prompt: Optional[bool] = True
+
+
+class TokenizeResponse(BaseModel):
+    id: str
+    tokens: Any
+    text: str
+    n_tokens: int
+    model: str
+
+
+class InvocationRequest(BaseModel):
+    endpoint: str
+    payload: Optional[
+        Union[
+            ChatCompletionRequest,
+            CompletionRequest,
+            TokenizeCompletionRequest,
+        ]
+    ]
+    
 
 class LogProbs(BaseModel):
     text_offset: List[int] = Field(default_factory=list)

@@ -1,4 +1,5 @@
 import time
+import uuid
 import codecs
 from fastapi import Request
 from typing import AsyncGenerator, AsyncIterator, Optional, List, Union
@@ -57,7 +58,7 @@ class OpenAIServingChat(OpenAIServing):
                 f"Error in applying chat template from request: {str(e)}")
             return self.create_error_response(str(e))
 
-        request_id = f"cmpl-{random_uuid()}"
+        request_id = str(uuid.uuid4())
         try:
             token_ids = self._validate_prompt_and_tokenize(request,
                                                            prompt=prompt)

@@ -101,5 +101,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY --from=build /workspace/vllm/*.so /workspace/vllm/
 COPY vllm vllm
 
-ENTRYPOINT ["python3", "-m", "vllm.entrypoints.openai.api_server"]
+RUN chmod +x vllm/entrypoint.sh
+ENTRYPOINT ["vllm/entrypoint.sh"]
 #################### OPENAI API SERVER ####################
