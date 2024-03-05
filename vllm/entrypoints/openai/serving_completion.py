@@ -2,6 +2,7 @@ import time
 from typing import (AsyncGenerator, AsyncIterator, Callable, Dict, List,
                     Optional, Tuple)
 
+import uuid
 from fastapi import Request
 
 from vllm.engine.async_llm_engine import AsyncLLMEngine
@@ -79,8 +80,8 @@ class OpenAIServingCompletion(OpenAIServing):
             return self.create_error_response(
                 "suffix is not currently supported")
 
-        model_name = self.served_model_names[0]
-        request_id = f"cmpl-{random_uuid()}"
+        model_name = request.model
+        request_id = str(uuid.uuid4())
         created_time = int(time.time())
 
         # Schedule the request and get the result generator.
