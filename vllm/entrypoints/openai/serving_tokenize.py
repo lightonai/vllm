@@ -1,5 +1,6 @@
 from typing import List
 import uuid
+import codecs
 from vllm.logger import init_logger
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.entrypoints.openai.protocol import (
