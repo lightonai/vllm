@@ -3,5 +3,6 @@
     "image": "vllm:0.3.3",
     "pipeline_parallel_size": 1,
     "tensor_parallel_size": 8,
-    "sagemaker_instance_type": "ml.p4d.24xlarge"
+    "sagemaker_instance_type": "ml.p4d.24xlarge",
+    "trust_remote_code": true
 }
