@@ -1,10 +1,11 @@
-import re
-import boto3
-import fire
-import random
-import string
 import json
 import os
+import random
+import re
+import string
+
+import boto3
+import fire
 
 
 def generate_random_string(length):
@@ -47,7 +48,9 @@ def get_value(config_data, cli_value, key):
         print_color(f"Using {key} from CLI: {cli_value}", "blue")
         return cli_value
     elif config_data is not None:
-        print_color(f"Using {key} from config: {config_data.get(key, None)}", "yellow")
+        print_color(
+            f"Using {key} from config: {config_data.get(key, None)}", "yellow"
+        )
         return config_data.get(key, None)
     else:
         return None
@@ -77,7 +80,9 @@ def deploy(
     config_data = read_json_file(config_path)
     model = get_value(config_data, model, "model")
     image = get_value(config_data, image, "image")
-    instance_type = get_value(config_data, instance_type, "sagemaker_instance_type")
+    instance_type = get_value(
+        config_data, instance_type, "sagemaker_instance_type"
+    )
     pipeline_parallel_size = get_value(
         config_data, pipeline_parallel_size, "pipeline_parallel_size"
     )
@@ -85,18 +90,30 @@ def deploy(
         config_data, tensor_parallel_size, "tensor_parallel_size"
     )
     max_model_len = get_value(config_data, max_model_len, "max_model_len")
+    trust_remote_code = get_value(config_data, None, "trust_remote_code")
 
     image_version = image.split(":")[-1].replace(".", "-")
 
     random_id = generate_random_string(5)
     name = model.split("/")[-1] if endpoint_name is None else endpoint_name
-    endpoint_name = "vllm-" + image_version + "--" + re.sub("[^0-9a-zA-Z]", "-", name) + "-" + random_id
+    endpoint_name = (
+        "vllm-"
+        + image_version
+        + "--"
+        + re.sub("[^0-9a-zA-Z]", "-", name)
+        + "-"
+        + random_id
+    )
     model_name = f"{endpoint_name}-mdl"
     endpoint_config_name = f"{endpoint_name}-epc"
 
-    assert len(endpoint_name) <= 63, "Endpoint name must be less than 63 characters"
+    assert (
+        len(endpoint_name) <= 63
+    ), "Endpoint name must be less than 63 characters"
     assert len(model_name) <= 63, "Model name must be less than 63 characters"
-    assert len(endpoint_config_name) <= 63, "Endpoint config name must be less than 63 characters"
+    assert (
+        len(endpoint_config_name) <= 63
+    ), "Endpoint config name must be less than 63 characters"
 
     # get sagemaker image and role
     vllm_image_uri, role = get_sagemaker_vars(region, image)
@@ -118,6 +135,9 @@ def deploy(
 
     if max_model_len is not None:
         container_env["MAX_MODEL_LEN"] = str(max_model_len)
+
+    if trust_remote_code is not None:
+        container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code)
 
     print("\nThis configuration will be applied: ")
     print_color(
@@ -141,7 +161,10 @@ def deploy(
     create_model_response = sm_client.create_model(
         ModelName=model_name,
         ExecutionRoleArn=role,
-        PrimaryContainer={"Image": vllm_image_uri, "Environment": container_env},
+        PrimaryContainer={
+            "Image": vllm_image_uri,
+            "Environment": container_env,
+        },
     )
     print("Model Arn: " + create_model_response["ModelArn"])
 
@@ -159,7 +182,8 @@ def deploy(
         ],
     )
     print(
-        "Endpoint Config Arn: " + create_endpoint_config_response["EndpointConfigArn"]
+        "Endpoint Config Arn: "
+        + create_endpoint_config_response["EndpointConfigArn"]
     )
 
     # create endpoint
