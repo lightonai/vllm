@@ -118,6 +118,7 @@ class EngineArgs:
                             'always use the slow tokenizer.')
         parser.add_argument('--trust-remote-code',
                             action='store_true',
+                            default=os.getenv('TRUST_REMOTE_CODE', 'false').lower() in ('true', '1', 't'),
                             help='trust remote code from huggingface')
         parser.add_argument('--download-dir',
                             type=str,
