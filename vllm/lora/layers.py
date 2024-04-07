@@ -841,6 +841,8 @@ class MergedQKVParallelLinearWithLora(ColumnParallelLinearWithLoRA):
                 index, 0, :lora_b_v.shape[1], :lora_b_v.shape[0]].copy_(
                     lora_b_v.T, non_blocking=True)
 
+        if isinstance(lora_a, torch.Tensor):
+            lora_a = [lora_a, lora_a, lora_a]
         if lora_a[0] is not None:
             self.lora_a_stacked[0][
                 index, 0, :lora_a[0].shape[1], :lora_a[0].shape[0]].copy_(
