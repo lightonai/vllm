@@ -46,6 +46,7 @@ from vllm.model_executor.model_loader.weight_utils import default_weight_loader
 from vllm.model_executor.sampling_metadata import SamplingMetadata
 from vllm.sequence import SamplerOutput
 from vllm.transformers_utils.configs import RWConfig
+from vllm.config import LoRAConfig
 
 FalconConfig = Union[HF_FalconConfig, RWConfig]
 
@@ -377,7 +378,25 @@ class FalconModel(nn.Module):
 
 
 class FalconForCausalLM(nn.Module):
-
+    packed_modules_mapping = {
+        "query_key_value": [
+            "q_proj",
+            "k_proj",
+            "v_proj",
+        ],
+    }
+    supported_lora_modules = [
+        'query_key_value', 
+        'dense', 
+        'dense_h_to_4h', 
+        'dense_4h_to_h'
+    ]
+    embedding_modules = {
+        "word_embeddings": "input_embeddings",
+        "lm_head": "output_embeddings",
+    }
+    embedding_padding_modules = ["lm_head"]
+    
     def __init__(
         self,
         config: FalconConfig,
