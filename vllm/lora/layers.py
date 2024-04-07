@@ -710,6 +710,17 @@ class MergedQKVParallelLinearWithLora(ColumnParallelLinearWithLoRA):
         self.reset_lora(index)
 
         if self.tp_size > 1:
+            if isinstance(lora_b, torch.Tensor):
+                lora_b_ = []
+                offset = 0
+                slice_info = zip(self.output_slices, [self.q_shard_id, self.kv_shard_id, self.kv_shard_id])
+                for shard_size, shard_id in slice_info:
+                    start = shard_size * shard_id
+                    end = shard_size * (shard_id + 1)
+                    lora_b_.append(lora_b[:, start + offset : end + offset])
+                    offset += shard_size
+                lora_b = lora_b_
+            
             if lora_b[0] is not None:
                 lora_b_q = lora_b[0][:, self.q_proj_shard_size *
                                      self.q_shard_id:self.q_proj_shard_size *
@@ -745,6 +756,8 @@ class MergedQKVParallelLinearWithLora(ColumnParallelLinearWithLoRA):
                     index, 0, :lora_b[2].shape[1], :lora_b[2].shape[0]].copy_(
                         lora_b[2].T, non_blocking=True)
 
+        if isinstance(lora_a, torch.Tensor):
+            lora_a = [lora_a, lora_a, lora_a]
         if lora_a[0] is not None:
             self.lora_a_stacked[0][
                 index, 0, :lora_a[0].shape[1], :lora_a[0].shape[0]].copy_(
