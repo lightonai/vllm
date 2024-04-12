@@ -543,6 +543,12 @@ class EmbeddingRequest(OpenAIBaseModel):
         return PoolingParams(additional_data=self.additional_data)
 
 
+class AddLoRARequest(BaseModel):
+    lora_name: str
+    s3_bucket: str
+    s3_key: str
+
+
 class TokenizeCompletionRequest(BaseModel):
     model: str
     prompt: Optional[str] = None

@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import inspect
 import re
+import os
 from contextlib import asynccontextmanager
 from http import HTTPStatus
 from typing import Optional, Set
@@ -9,6 +10,9 @@ from typing import Optional, Set
 import fastapi
 import uvicorn
 from fastapi import APIRouter, Request
+import boto3
+import tarfile
+from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -29,7 +33,8 @@ from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
                                               DetokenizeResponse,
                                               EmbeddingRequest, ErrorResponse,
                                               TokenizeRequest,
-                                              TokenizeResponse, InvocationRequest, TokenizeCompletionRequest)
+                                              TokenizeResponse, InvocationRequest, TokenizeCompletionRequest, AddLoRARequest)
+from vllm.entrypoints.openai.serving_engine import LoRA
 # yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
@@ -53,6 +58,9 @@ openai_serving_tokenization: OpenAIServingTokenization
 logger = init_logger('vllm.entrypoints.openai.api_server')
 
 _running_tasks: Set[asyncio.Task] = set()
+
+s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-west-2"))
+LORA_FOLDER_PATH = "/tmp/lora_modules"
 
 
 @asynccontextmanager
@@ -127,6 +135,8 @@ async def invocations(request: InvocationRequest, raw_request: Request):
         return await detokenize(request.payload)
     elif request.endpoint == "/embeddings":
         return await create_embedding(request.payload, raw_request)
+    elif request.endpoint == "/loras":
+        return await add_lora(request.payload, raw_request)
     else:
         err = openai_serving_chat.create_error_response(message=f"Endpoint {request.endpoint} not found")
         return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
@@ -136,6 +146,35 @@ async def invocations(request: InvocationRequest, raw_request: Request):
 async def show_available_models():
     models = await openai_serving_completion.show_available_models()
     return JSONResponse(content=models.model_dump())
+
+
+
+@router.post("/loras")
+async def add_lora(request: AddLoRARequest, raw_request: Request):
+    for lora_request in openai_serving_chat.lora_requests:
+        if lora_request.lora_name == request.lora_name:
+            return {"success": True}
+            
+    lora_dir = f"{LORA_FOLDER_PATH}/{request.lora_name}"
+
+    # if lora path do not exists create it
+    if not os.path.exists(lora_dir):
+        os.makedirs(lora_dir)
+
+    # download lora module from s3
+    s3_client.download_file(request.s3_bucket, request.s3_key, f"{lora_dir}/model.tar.gz")
+
+    # extract lora module
+    with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
+        tar.extractall(path=lora_dir)
+
+    # remove tar file
+    os.remove(f"{lora_dir}/model.tar.gz")
+
+    lora = LoRA(request.lora_name, lora_dir)
+    await openai_serving_completion._add_lora(lora=lora)
+    await openai_serving_chat._add_lora(lora=lora)
+    return {"success": True}
 
 
 @router.get("/version")

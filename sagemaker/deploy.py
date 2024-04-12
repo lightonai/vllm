@@ -21,6 +21,13 @@ def get_sagemaker_vars(region, base_image_name):
     )
 
 
+def parse_lora_modules(lora_modules):
+    mods = []
+    for module in lora_modules:
+        mods.append(f"{module['name']}={module['path']}")
+    return " ".join(mods)
+
+
 def print_color(text, color):
     colors = {
         "red": "\033[91m",
@@ -91,6 +98,9 @@ def deploy(
     )
     max_model_len = get_value(config_data, max_model_len, "max_model_len")
     trust_remote_code = get_value(config_data, None, "trust_remote_code")
+    loras = get_value(config_data, None, "loras")
+
+    has_loras = loras is not None and len(loras) > 0
 
     image_version = image.split(":")[-1].replace(".", "-")
 
@@ -114,6 +124,7 @@ def deploy(
     assert (
         len(endpoint_config_name) <= 63
     ), "Endpoint config name must be less than 63 characters"
+    assert os.getenv("HF_TOKEN") is not None, "HF_TOKEN is required"
 
     # get sagemaker image and role
     vllm_image_uri, role = get_sagemaker_vars(region, image)
@@ -139,6 +150,10 @@ def deploy(
     if trust_remote_code is not None:
         container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code)
 
+    if has_loras:
+        container_env["ENABLE_LORA"] = "true"
+        container_env["LORA_MODULES"] = parse_lora_modules(loras)
+
     print("\nThis configuration will be applied: ")
     print_color(
         json.dumps(
@@ -156,15 +171,26 @@ def deploy(
         "green",
     )
 
+    primary_container = {
+        "Image": vllm_image_uri,
+        "Environment": container_env,
+    }
+
+    if has_loras:
+        primary_container["ModelDataSource"] = {
+            "S3DataSource": {
+                "CompressionType": "Gzip",
+                "S3DataType": "S3Object",
+                "S3Uri": loras[0]["s3_uri"],
+            }
+        }
+
     # create model
     sm_client = boto3.client(service_name="sagemaker", region_name=region)
     create_model_response = sm_client.create_model(
         ModelName=model_name,
         ExecutionRoleArn=role,
-        PrimaryContainer={
-            "Image": vllm_image_uri,
-            "Environment": container_env,
-        },
+        PrimaryContainer=primary_container,
     )
     print("Model Arn: " + create_model_response["ModelArn"])
 
