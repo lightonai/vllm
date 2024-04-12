@@ -454,6 +454,7 @@ class EngineArgs:
         # LoRA related configs
         parser.add_argument('--enable-lora',
                             action='store_true',
+                            default=os.getenv('ENABLE_LORA', 'false').lower() in ('true', '1', 't'),
                             help='If True, enable handling of LoRA adapters.')
         parser.add_argument('--max-loras',
                             type=int,
