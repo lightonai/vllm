@@ -147,7 +147,7 @@ FROM vllm-base AS vllm-openai
 
 # install additional dependencies for openai api server
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install accelerate hf_transfer modelscope
+    pip install accelerate hf_transfer modelscope boto3
 
 ENV VLLM_USAGE_SOURCE production-docker-image
 
