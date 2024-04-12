@@ -58,6 +58,15 @@ class OpenAIServing:
             # When using single vLLM without engine_use_ray
             asyncio.run(self._post_init())
 
+    async def _add_lora(self, lora: LoRA):
+        self.lora_requests.append(
+            LoRARequest(
+                lora_name=lora.name,
+                lora_int_id=len(self.lora_requests) + 1,
+                lora_local_path=lora.local_path,
+            )
+        )
+
     async def _post_init(self):
         engine_model_config = await self.engine.get_model_config()
         self.max_model_len = engine_model_config.max_model_len
