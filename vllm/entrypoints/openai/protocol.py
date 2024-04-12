@@ -360,6 +360,12 @@ class CompletionRequest(BaseModel):
         return data
 
 
+class AddLoRARequest(BaseModel):
+    lora_name: str
+    s3_bucket: str
+    s3_key: str
+
+
 class TokenizeCompletionRequest(BaseModel):
     model: str
     prompt: Optional[str] = None
@@ -382,6 +388,7 @@ class InvocationRequest(BaseModel):
             ChatCompletionRequest,
             CompletionRequest,
             TokenizeCompletionRequest,
+            AddLoRARequest,
         ]
     ]
     
