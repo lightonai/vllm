@@ -441,11 +441,11 @@ class EngineArgs:
                             help='If True, enable handling of LoRA adapters.')
         parser.add_argument('--max-loras',
                             type=int,
-                            default=EngineArgs.max_loras,
+                            default=int(os.getenv('MAX_LORAS')) if os.getenv('MAX_LORAS') else EngineArgs.max_loras,
                             help='Max number of LoRAs in a single batch.')
         parser.add_argument('--max-lora-rank',
                             type=int,
-                            default=EngineArgs.max_lora_rank,
+                            default=int(os.getenv('MAX_LORA_RANK')) if os.getenv('MAX_LORA_RANK') else EngineArgs.max_lora_rank,
                             help='Max LoRA rank.')
         parser.add_argument(
             '--lora-extra-vocab-size',
@@ -475,7 +475,7 @@ class EngineArgs:
         parser.add_argument(
             '--max-cpu-loras',
             type=int,
-            default=EngineArgs.max_cpu_loras,
+            default=int(os.getenv('MAX_CPU_LORAS')) if os.getenv('MAX_CPU_LORAS') else EngineArgs.max_cpu_loras,
             help=('Maximum number of LoRAs to store in CPU memory. '
                   'Must be >= than max_num_seqs. '
                   'Defaults to max_num_seqs.'))
