@@ -6,7 +6,8 @@ from vllm.entrypoints.openai.protocol import (
     TokenizeResponse,
     TokenizeCompletionRequest
 )
-from vllm.entrypoints.openai.serving_engine import OpenAIServing
+from vllm.entrypoints.openai.serving_engine import OpenAIServing, LoRA
+from typing import List, Optional
 
 logger = init_logger(__name__)
 
@@ -17,8 +18,9 @@ class OpenAIServingTokenize(OpenAIServing):
                  engine: AsyncLLMEngine,
                  served_model: str,
                  response_role: str,
+                 lora_modules: Optional[List[LoRA]] = None,
                  chat_template=None):
-        super().__init__(engine=engine, served_model=served_model, lora_modules=None)
+        super().__init__(engine=engine, served_model=served_model, lora_modules=lora_modules)
         self.response_role = response_role
         self._load_chat_template(chat_template)
 
