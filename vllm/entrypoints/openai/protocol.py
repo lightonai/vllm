@@ -545,8 +545,8 @@ class EmbeddingRequest(OpenAIBaseModel):
 
 class AddLoRARequest(BaseModel):
     lora_name: str
-    s3_bucket: str
-    s3_key: str
+    s3_uri: Optional[str] = None
+    local_path: Optional[str] = None
 
 
 class TokenizeCompletionRequest(BaseModel):

@@ -153,23 +153,39 @@ async def show_available_models():
 async def add_lora(request: AddLoRARequest, raw_request: Request):
     for lora_request in openai_serving_chat.lora_requests:
         if lora_request.lora_name == request.lora_name:
-            return {"success": True}
-            
-    lora_dir = f"{LORA_FOLDER_PATH}/{request.lora_name}"
+            return JSONResponse(content={"error": f"LoRA module {request.lora_name} already exists."},
+                                status_code=HTTPStatus.BAD_REQUEST)
 
-    # if lora path do not exists create it
-    if not os.path.exists(lora_dir):
-        os.makedirs(lora_dir)
+    if request.s3_uri and request.local_path:
+        return JSONResponse(content={"error": "Both s3_uri and local_path cannot be provided."},
+                            status_code=HTTPStatus.BAD_REQUEST)
 
-    # download lora module from s3
-    s3_client.download_file(request.s3_bucket, request.s3_key, f"{lora_dir}/model.tar.gz")
+    if request.s3_uri is None and request.local_path is None:
+        return JSONResponse(content={"error": "Either s3_uri or local_path must be provided."},
+                            status_code=HTTPStatus.BAD_REQUEST)
 
-    # extract lora module
-    with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
-        tar.extractall(path=lora_dir)
+    if request.local_path:
+        lora_dir = request.local_path
+    else:
+        lora_dir = f"{LORA_FOLDER_PATH}/{request.lora_name}"
 
-    # remove tar file
-    os.remove(f"{lora_dir}/model.tar.gz")
+        # if lora path do not exists create it
+        if not os.path.exists(lora_dir):
+            os.makedirs(lora_dir)
+
+        s3_uri = request.s3_uri
+        s3_bucket = s3_uri.split("/")[2]
+        s3_key = s3_uri.split("/", 3)[3]
+
+        # download lora module from s3
+        s3_client.download_file(s3_bucket, s3_key, f"{lora_dir}/model.tar.gz")
+
+        # extract lora module
+        with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
+            tar.extractall(path=lora_dir)
+
+        # remove tar file
+        os.remove(f"{lora_dir}/model.tar.gz")
 
     lora = LoRA(request.lora_name, lora_dir)
     await openai_serving_completion._add_lora(lora=lora)
