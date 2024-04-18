@@ -143,7 +143,11 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
         s3_key = s3_uri.split("/", 3)[3]
 
         # download lora module from s3
-        s3_client.download_file(s3_bucket, s3_key, f"{lora_dir}/model.tar.gz")
+        try:
+            s3_client.download_file(s3_bucket, s3_key, f"{lora_dir}/model.tar.gz")
+        except Exception as e:
+            return JSONResponse(content={"error": f"Error downloading lora module from s3: {e}"},
+                                status_code=HTTPStatus.INTERNAL_SERVER_ERROR)
 
         # extract lora module
         with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
@@ -155,6 +159,7 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
     lora = LoRA(request.lora_name, lora_dir)
     await openai_serving_completion._add_lora(lora=lora)
     await openai_serving_chat._add_lora(lora=lora)
+    await openai_serving_tokenize._add_lora(lora=lora)
     return {"success": True}
 
 
