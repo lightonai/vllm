@@ -255,6 +255,7 @@ if __name__ == "__main__":
         engine, served_model_names, args.lora_modules)
     openai_serving_tokenize = OpenAIServingTokenize(engine, served_model_names,
                                             args.response_role,
+                                            args.lora_modules,
                                             args.chat_template)
 
     app.root_path = args.root_path
