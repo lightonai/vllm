@@ -132,3 +132,7 @@ git rebase official/main
 git rebase --continue # After resolving conflicts (if any), continue the rebase
 git push origin main --force
 ```
+
+## Deployment
+
+To deploy a model on Sagemaker, follow this [README](https://github.com/lightonai/vllm/blob/main/sagemaker/README.md).
