@@ -33,13 +33,16 @@ fi
 # Build the Docker image with specified build arguments.
 if DOCKER_BUILDKIT=1 docker build . --target vllm-openai --tag "${REPOSITORY_NAME}" --build-arg max_jobs=8 --build-arg nvcc_threads=8
 then 
-    # Tagging both specific version and latest tag.
     docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:${VERSION_NUMBER}"
-    docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:latest"
-
-    # Pushing both tags to ECR.
     docker push "$CONTAINER_URI:${VERSION_NUMBER}"
-    docker push "$CONTAINER_URI:latest"
+
+    # Ask the user if the image should be tagged as latest.
+    read -p "Tag the image as latest? (y/n): " TAG_LATEST
+    
+    if [ "$TAG_LATEST" == "y" ]; then
+        docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:latest"
+        docker push "$CONTAINER_URI:latest"
+    fi
 else 
 	echo "Docker build failed."
 	exit 2	
