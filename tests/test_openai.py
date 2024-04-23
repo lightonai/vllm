@@ -1,10 +1,10 @@
-import openai
-from openai import OpenAI
 import json
+import uuid
+
+import openai
 import pytest
 import requests
-import uuid
-import os
+from openai import OpenAI
 
 HOST = "http://localhost:8000"
 
@@ -18,6 +18,8 @@ client = OpenAI(
 
 models = client.models.list()
 model = models.data[0].id
+
+model_ids = [m.id for m in models.data]
 
 schema = """{
     "title": "Character",
@@ -74,9 +76,12 @@ def is_uuid4(string: str) -> bool:
         return False
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_completion(stream):
-    print(f"=== Completion (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_completion(model, stream):
+    print(f"=== Completion JSON (model={model}, stream={stream}) ===")
     completion = client.completions.create(
         model=model,
         temperature=0.0,
@@ -92,9 +97,12 @@ def test_completion(stream):
         print(completion.model_dump_json())
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_completion_json(stream):
-    print(f"=== Completion JSON (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_completion_json(model, stream):
+    print(f"=== Completion JSON (model={model}, stream={stream}) ===")
     completion = client.completions.create(
         model=model,
         temperature=0.0,
@@ -114,9 +122,12 @@ def test_completion_json(stream):
         print(json.loads(completion.choices[0].text))
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_completion_regex(stream):
-    print(f"=== Completion Regex (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_completion_regex(model, stream):
+    print(f"=== Completion Regex (model={model}, stream={stream}) ===")
     completion = client.completions.create(
         model=model,
         temperature=0.0,
@@ -135,9 +146,12 @@ def test_completion_regex(stream):
         print(completion.model_dump_json())
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_completion_guided_choice(stream):
-    print(f"=== Completion guided choice (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_completion_guided_choice(model, stream):
+    print(f"=== Completion guided choice (model={model}, stream={stream}) ===")
     completion = client.completions.create(
         model=model,
         temperature=0.0,
@@ -157,9 +171,12 @@ def test_completion_guided_choice(stream):
         assert completion.choices[0].text in choices
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_chat(stream):
-    print(f"=== Chat (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_chat(model, stream):
+    print(f"=== Chat (model={model}, stream={stream}) ===")
     completion = client.chat.completions.create(
         messages=[
             {
@@ -180,9 +197,12 @@ def test_chat(stream):
         print(completion.model_dump_json())
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_chat_json(stream):
-    print(f"=== Chat JSON (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_chat_json(model, stream):
+    print(f"=== Chat JSON (model={model}, stream={stream}) ===")
     completion = client.chat.completions.create(
         messages=[
             {
@@ -207,9 +227,12 @@ def test_chat_json(stream):
         print(json.loads(completion.choices[0].message.content))
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_chat_regex(stream):
-    print(f"=== Chat Regex (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_chat_regex(model, stream):
+    print(f"=== Chat Regex (model={model}, stream={stream}) ===")
     completion = client.chat.completions.create(
         messages=[
             {"role": "user", "content": "Give me the 10 first digits of PI."},
@@ -230,9 +253,12 @@ def test_chat_regex(stream):
         print(completion.model_dump_json())
 
 
-@pytest.mark.parametrize("stream", [False, True])
-def test_chat_guided_choice(stream):
-    print(f"=== Chat guided choice (stream={stream}) ===")
+@pytest.mark.parametrize(
+    "model,stream",
+    [(model, stream) for model in model_ids for stream in [False, True]],
+)
+def test_chat_guided_choice(model, stream):
+    print(f"=== Chat guided choice (model={model}, stream={stream}) ===")
     completion = client.chat.completions.create(
         messages=[
             {
@@ -278,7 +304,7 @@ def test_json_schema_and_guided_regex():
         )
 
 
-@pytest.mark.parametrize("model", [model])
+@pytest.mark.parametrize("model", model_ids)
 def test_tokenize(model):
     url = f"{HOST}/tokenize"
     data = {
@@ -297,7 +323,7 @@ def test_tokenize(model):
     print(json.dumps(result, indent=4, sort_keys=True))
 
 
-@pytest.mark.parametrize("model", [model])
+@pytest.mark.parametrize("model", model_ids)
 def test_chat_tokenize(model):
     url = f"{HOST}/tokenize"
     data = {
@@ -316,7 +342,7 @@ def test_chat_tokenize(model):
     print(json.dumps(result, indent=4, sort_keys=True))
 
 
-@pytest.mark.parametrize("model", [model])
+@pytest.mark.parametrize("model", model_ids)
 def test_invalid_payload_tokenize(model):
     url = f"{HOST}/tokenize"
     data = {
