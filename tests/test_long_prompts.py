@@ -45,7 +45,7 @@ ids = torch.randint(0, vocab_size, (1, PROMPT_LEN))
 
 @pytest.mark.parametrize("model", model_ids)
 def test_completion(model):
-    print(f"=== Completion JSON (model={model}) ===")
+    print(f"=== Completion (model={model}) ===")
     completion = client.completions.create(
         model=model,
         temperature=0.0,

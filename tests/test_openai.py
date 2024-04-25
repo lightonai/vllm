@@ -81,7 +81,7 @@ def is_uuid4(string: str) -> bool:
     [(model, stream) for model in model_ids for stream in [False, True]],
 )
 def test_completion(model, stream):
-    print(f"=== Completion JSON (model={model}, stream={stream}) ===")
+    print(f"=== Completion (model={model}, stream={stream}) ===")
     completion = client.completions.create(
         model=model,
         temperature=0.0,
