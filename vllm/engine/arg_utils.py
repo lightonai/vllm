@@ -283,13 +283,13 @@ class EngineArgs:
             'of GPU blocks. Used for testing preemption.')
         parser.add_argument('--max-num-batched-tokens',
                             type=int,
-                            default=EngineArgs.max_num_batched_tokens,
-                            help='Maximum number of batched tokens per '
-                            'iteration.')
+                            default=int(os.getenv('MAX_NUM_BATCHED_TOKENS')) if os.getenv('MAX_NUM_BATCHED_TOKENS') else EngineArgs.max_num_batched_tokens,
+                            help='maximum number of batched tokens per '
+                            'iteration')
         parser.add_argument('--max-num-seqs',
                             type=int,
-                            default=EngineArgs.max_num_seqs,
-                            help='Maximum number of sequences per iteration.')
+                            default=int(os.getenv('MAX_NUM_SEQS')) if os.getenv('MAX_NUM_SEQS') else EngineArgs.max_num_seqs,
+                            help='maximum number of sequences per iteration')
         parser.add_argument(
             '--max-logprobs',
             type=int,
