@@ -20,6 +20,7 @@ models = client.models.list()
 model = models.data[0].id
 
 model_ids = [m.id for m in models.data]
+stream_options = [False, True]
 
 schema = """{
     "title": "Character",
@@ -78,7 +79,7 @@ def is_uuid4(string: str) -> bool:
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_completion(model, stream):
     print(f"=== Completion (model={model}, stream={stream}) ===")
@@ -99,7 +100,7 @@ def test_completion(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_completion_json(model, stream):
     print(f"=== Completion JSON (model={model}, stream={stream}) ===")
@@ -124,7 +125,7 @@ def test_completion_json(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_completion_regex(model, stream):
     print(f"=== Completion Regex (model={model}, stream={stream}) ===")
@@ -148,7 +149,7 @@ def test_completion_regex(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_completion_guided_choice(model, stream):
     print(f"=== Completion guided choice (model={model}, stream={stream}) ===")
@@ -173,7 +174,7 @@ def test_completion_guided_choice(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_chat(model, stream):
     print(f"=== Chat (model={model}, stream={stream}) ===")
@@ -199,7 +200,7 @@ def test_chat(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_chat_json(model, stream):
     print(f"=== Chat JSON (model={model}, stream={stream}) ===")
@@ -229,7 +230,7 @@ def test_chat_json(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_chat_regex(model, stream):
     print(f"=== Chat Regex (model={model}, stream={stream}) ===")
@@ -255,7 +256,7 @@ def test_chat_regex(model, stream):
 
 @pytest.mark.parametrize(
     "model,stream",
-    [(model, stream) for model in model_ids for stream in [False, True]],
+    [(model, stream) for model in model_ids for stream in stream_options],
 )
 def test_chat_guided_choice(model, stream):
     print(f"=== Chat guided choice (model={model}, stream={stream}) ===")
