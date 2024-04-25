@@ -166,11 +166,15 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
 
     if request.local_path:
         lora_dir = request.local_path
+        logger.info(f"Loading LoRA module from local path: {lora_dir}")
     else:
         lora_dir = f"{LORA_FOLDER_PATH}/{request.lora_name}"
+        logger.info(f"Loading LoRA module from s3: {request.s3_uri}")
+        logger.info(f"LoRA module will be stored in: {lora_dir}")
 
         # if lora path do not exists create it
         if not os.path.exists(lora_dir):
+            logger.info(f"Creating lora module directory: {lora_dir}")
             os.makedirs(lora_dir)
 
         s3_uri = request.s3_uri
@@ -179,6 +183,7 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
 
         # download lora module from s3
         try:
+            logger.info(f"Downloading lora module from s3: {s3_uri} ({s3_bucket}/{s3_key})")
             s3_client.download_file(s3_bucket, s3_key, f"{lora_dir}/model.tar.gz")
         except Exception as e:
             return JSONResponse(content={"error": f"Error downloading lora module from s3: {e}"},
@@ -187,6 +192,11 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
         # extract lora module
         with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
             tar.extractall(path=lora_dir)
+
+        # list directory and print files
+        logger.info(f"Extracted lora module files:")
+        for file in os.listdir(lora_dir):
+            logger.info(f"  - {file}")
 
         # remove tar file
         os.remove(f"{lora_dir}/model.tar.gz")
