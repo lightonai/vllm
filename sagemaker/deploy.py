@@ -99,6 +99,7 @@ def deploy(
     max_model_len = get_value(config_data, max_model_len, "max_model_len")
     trust_remote_code = get_value(config_data, None, "trust_remote_code")
     loras = get_value(config_data, None, "loras")
+    max_lora_rank = get_value(config_data, None, "max_lora_rank")
 
     has_loras = loras is not None and len(loras) > 0
 
@@ -148,11 +149,13 @@ def deploy(
         container_env["MAX_MODEL_LEN"] = str(max_model_len)
 
     if trust_remote_code is not None:
-        container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code)
+        container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code).lower()
 
     if has_loras:
         container_env["ENABLE_LORA"] = "true"
         container_env["LORA_MODULES"] = parse_lora_modules(loras)
+        if max_lora_rank is not None:
+            container_env["MAX_LORA_RANK"] = str(max_lora_rank)
 
     print("\nThis configuration will be applied: ")
     print_color(
@@ -184,6 +187,8 @@ def deploy(
                 "S3Uri": loras[0]["s3_uri"],
             }
         }
+
+    print(json.dumps(primary_container, indent=4))
 
     # create model
     sm_client = boto3.client(service_name="sagemaker", region_name=region)
