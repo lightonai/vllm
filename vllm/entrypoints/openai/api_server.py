@@ -177,13 +177,13 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
         with tarfile.open(f"{lora_dir}/model.tar.gz", "r:gz") as tar:
             tar.extractall(path=lora_dir)
 
+        # remove tar file
+        os.remove(f"{lora_dir}/model.tar.gz")
+
         # list directory and print files
         logger.info(f"Extracted lora module files:")
         for file in os.listdir(lora_dir):
             logger.info(f"  - {file}")
-
-        # remove tar file
-        os.remove(f"{lora_dir}/model.tar.gz")
 
     lora = LoRA(request.lora_name, lora_dir)
     await openai_serving_completion._add_lora(lora=lora)
