@@ -100,6 +100,7 @@ def deploy(
     trust_remote_code = get_value(config_data, None, "trust_remote_code")
     loras = get_value(config_data, None, "loras")
     max_lora_rank = get_value(config_data, None, "max_lora_rank")
+    max_num_seqs = get_value(config_data, None, "max_num_seqs")
 
     has_loras = loras is not None and len(loras) > 0
 
@@ -148,6 +149,9 @@ def deploy(
     if max_model_len is not None:
         container_env["MAX_MODEL_LEN"] = str(max_model_len)
 
+    if max_num_seqs is not None:
+        container_env["MAX_NUM_SEQS"] = str(max_num_seqs)
+
     if trust_remote_code is not None:
         container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code).lower()
 
@@ -189,6 +193,13 @@ def deploy(
         }
 
     print(json.dumps(primary_container, indent=4))
+
+    # Ask for confirmation
+    print("\nDo you want to continue? (yes/no)")
+    response = input()
+    if response != "yes":
+        print("Exiting...")
+        return
 
     # create model
     sm_client = boto3.client(service_name="sagemaker", region_name=region)
