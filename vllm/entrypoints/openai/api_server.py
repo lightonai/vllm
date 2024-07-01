@@ -34,7 +34,9 @@ from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
                                               EmbeddingRequest, ErrorResponse,
                                               TokenizeRequest,
                                               TokenizeResponse, InvocationRequest, TokenizeCompletionRequest, AddLoRARequest)
-from vllm.entrypoints.openai.serving_engine import LoRA
+from vllm.entrypoints.openai.serving_engine import LoRAModulePath
+from vllm.logger import init_logger
+from vllm.usage.usage_lib import UsageContext
 # yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
@@ -44,6 +46,7 @@ from vllm.entrypoints.openai.serving_tokenization import (
 from vllm.logger import init_logger
 from vllm.usage.usage_lib import UsageContext
 from vllm.utils import FlexibleArgumentParser
+from vllm.entrypoints.openai.serving_tokenize import OpenAIServingTokenize
 from vllm.version import __version__ as VLLM_VERSION
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds
@@ -52,6 +55,7 @@ engine: AsyncLLMEngine
 engine_args: AsyncEngineArgs
 openai_serving_chat: OpenAIServingChat
 openai_serving_completion: OpenAIServingCompletion
+openai_serving_tokenize: OpenAIServingTokenize
 openai_serving_embedding: OpenAIServingEmbedding
 openai_serving_tokenization: OpenAIServingTokenization
 
@@ -59,7 +63,8 @@ logger = init_logger('vllm.entrypoints.openai.api_server')
 
 _running_tasks: Set[asyncio.Task] = set()
 
-s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-west-2"))
+s3_client = boto3.client("s3",
+                         region_name=os.getenv("AWS_REGION", "us-west-2"))
 LORA_FOLDER_PATH = "/tmp/lora_modules"
 
 
@@ -90,16 +95,14 @@ def mount_metrics(app: fastapi.FastAPI):
     app.routes.append(metrics_route)
 
 
+@router.get("/ping")
+async def ping() -> Response:
+    return await health()
+
 @router.get("/health")
 async def health() -> Response:
     """Health check."""
     await openai_serving_chat.engine.check_health()
-    return Response(status_code=200)
-
-
-@router.get("/ping")
-async def ping() -> Response:
-    """Health check."""
     return Response(status_code=200)
 
 
@@ -138,7 +141,8 @@ async def invocations(request: InvocationRequest, raw_request: Request):
     elif request.endpoint == "/loras":
         return await add_lora(request.payload, raw_request)
     else:
-        err = openai_serving_chat.create_error_response(message=f"Endpoint {request.endpoint} not found")
+        err = openai_serving_chat.create_error_response(
+            message=f"Endpoint {request.endpoint} not found")
         return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
 
 
@@ -153,16 +157,23 @@ async def show_available_models():
 async def add_lora(request: AddLoRARequest, raw_request: Request):
     for lora_request in openai_serving_chat.lora_requests:
         if lora_request.lora_name == request.lora_name:
-            return JSONResponse(content={"error": f"LoRA module {request.lora_name} already exists."},
+            return JSONResponse(content={
+                "error":
+                f"LoRA module {request.lora_name} already exists."
+            },
                                 status_code=HTTPStatus.BAD_REQUEST)
 
     if request.s3_uri and request.local_path:
-        return JSONResponse(content={"error": "Both s3_uri and local_path cannot be provided."},
+        return JSONResponse(content={
+            "error":
+            "Both s3_uri and local_path cannot be provided."
+        },
                             status_code=HTTPStatus.BAD_REQUEST)
 
     if request.s3_uri is None and request.local_path is None:
-        return JSONResponse(content={"error": "Either s3_uri or local_path must be provided."},
-                            status_code=HTTPStatus.BAD_REQUEST)
+        return JSONResponse(
+            content={"error": "Either s3_uri or local_path must be provided."},
+            status_code=HTTPStatus.BAD_REQUEST)
 
     if request.local_path:
         lora_dir = request.local_path
@@ -183,10 +194,16 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
 
         # download lora module from s3
         try:
-            logger.info(f"Downloading lora module from s3: {s3_uri} ({s3_bucket}/{s3_key})")
-            s3_client.download_file(s3_bucket, s3_key, f"{lora_dir}/model.tar.gz")
+            logger.info(
+                f"Downloading lora module from s3: {s3_uri} ({s3_bucket}/{s3_key})"
+            )
+            s3_client.download_file(s3_bucket, s3_key,
+                                    f"{lora_dir}/model.tar.gz")
         except Exception as e:
-            return JSONResponse(content={"error": f"Error downloading lora module from s3: {e}"},
+            return JSONResponse(content={
+                "error":
+                f"Error downloading lora module from s3: {e}"
+            },
                                 status_code=HTTPStatus.INTERNAL_SERVER_ERROR)
 
         # extract lora module
@@ -201,10 +218,10 @@ async def add_lora(request: AddLoRARequest, raw_request: Request):
         for file in os.listdir(lora_dir):
             logger.info(f"  - {file}")
 
-    lora = LoRA(request.lora_name, lora_dir)
+    lora = LoRAModulePath(request.lora_name, lora_dir)
     await openai_serving_completion._add_lora(lora=lora)
     await openai_serving_chat._add_lora(lora=lora)
-    await openai_serving_tokenize._add_lora(lora=lora)
+    await openai_serving_tokenization._add_lora(lora=lora)
     return {"success": True}
 
 
