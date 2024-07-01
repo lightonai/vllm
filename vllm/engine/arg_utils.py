@@ -24,7 +24,7 @@ def get_model_names(names):
     if not names:
         return None
     served_models = []
-    for item in served_models.split(','):
+    for item in names.split(','):
         served_models.append(item)
     return served_models
 
