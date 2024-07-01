@@ -440,7 +440,8 @@ class AsyncLLMEngine:
             max_log_len=engine_args.max_log_len,
             start_engine_loop=start_engine_loop,
             usage_context=usage_context,
-            max_running_time_per_request=engine_args.max_running_time_per_request,
+            max_running_time_per_request=engine_args.
+            max_running_time_per_request,
         )
         return engine
 
@@ -514,7 +515,7 @@ class AsyncLLMEngine:
 
         Returns True if there are in-progress requests."""
 
-        if self.max_running_time_per_request:      
+        if self.max_running_time_per_request:
             # Fix the current time.
             now = time.time()
 
@@ -529,7 +530,8 @@ class AsyncLLMEngine:
                     logger.warning(
                         f"Request {seq_group.request_id} has been in the "
                         f"queue for {time_in_the_queue:.2f} seconds. Abort.")
-                    requests_to_be_aborted_due_to_timeout.append(seq_group.request_id)
+                    requests_to_be_aborted_due_to_timeout.append(
+                        seq_group.request_id)
 
             for req_id in requests_to_be_aborted_due_to_timeout:
                 await self.abort(req_id)

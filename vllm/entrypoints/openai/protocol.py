@@ -328,7 +328,8 @@ class ChatCompletionRequest(OpenAIBaseModel):
         if regex is not None and guided_regex is None:
             data['guided_regex'] = regex
 
-        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        json_schema, guided_json = data.get('json_schema'), data.get(
+            'guided_json')
         if json_schema is not None and guided_json is None:
             data['guided_json'] = json_schema
 
@@ -529,7 +530,8 @@ class CompletionRequest(OpenAIBaseModel):
         if regex is not None and guided_regex is None:
             data['guided_regex'] = regex
 
-        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        json_schema, guided_json = data.get('json_schema'), data.get(
+            'guided_json')
         if json_schema is not None and guided_json is None:
             data['guided_json'] = json_schema
 
@@ -822,5 +824,6 @@ class InvocationRequest(BaseModel):
             TokenizeCompletionRequest,
             DetokenizeRequest,
             EmbeddingRequest,
+            AddLoRARequest,
         ]
     ]

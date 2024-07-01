@@ -11,13 +11,25 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 # tokenizer.push_to_hub(model_name)
 
 messages = [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "Hello, how are you?"},
-    {"role": "assistant", "content": "I am fine, thanks!"},
-    {"role": "user", "content": "What is your name?"},
+    {
+        "role": "system",
+        "content": "You are a helpful assistant."
+    },
+    {
+        "role": "user",
+        "content": "Hello, how are you?"
+    },
+    {
+        "role": "assistant",
+        "content": "I am fine, thanks!"
+    },
+    {
+        "role": "user",
+        "content": "What is your name?"
+    },
 ]
 
-prompt = tokenizer.apply_chat_template(
-    messages, tokenize=False, add_generation_prompt=True
-)
+prompt = tokenizer.apply_chat_template(messages,
+                                       tokenize=False,
+                                       add_generation_prompt=True)
 print(prompt)
