@@ -1,0 +1,7 @@
+{
+    "model": "meta-llama/Meta-Llama-3-70B-Instruct",
+    "image": "vllm:0.4-custom.2.dev.5",
+    "pipeline_parallel_size": 1,
+    "tensor_parallel_size": 8,
+    "sagemaker_instance_type": "ml.p4d.24xlarge"
+}
