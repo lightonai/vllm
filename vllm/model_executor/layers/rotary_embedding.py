@@ -469,6 +469,7 @@ class YaRNScalingRotaryEmbedding(RotaryEmbedding):
         cache = torch.cat((cos, sin), dim=-1)
         return cache
 
+
 class NTKYaRNScalingRotaryEmbedding(RotaryEmbedding):
     """
     NTK-YaRN as presented by LightOn
@@ -496,9 +497,8 @@ class NTKYaRNScalingRotaryEmbedding(RotaryEmbedding):
 
     def _compute_cos_sin_cache(self) -> torch.Tensor:
         max_len = self.max_position_embeddings * self.scaling_factor
-        base = self.base * (
-            (self.scaling_factor + 1))**(self.rotary_dim /
-                                         (self.rotary_dim - 2))
+        base = self.base * ((self.scaling_factor + 1))**(self.rotary_dim /
+                                                         (self.rotary_dim - 2))
         inv_freq = self._compute_inv_freq(base)
         t = torch.arange(max_len, dtype=torch.float, device="cuda")
         freqs = torch.einsum("i,j -> ij", t, inv_freq)
@@ -506,6 +506,7 @@ class NTKYaRNScalingRotaryEmbedding(RotaryEmbedding):
         sin = (freqs.sin() * self.mscale)
         cache = torch.cat((cos, sin), dim=-1)
         return cache
+
 
 class Phi3SuScaledRotaryEmbedding(nn.Module):
     """Phi3 family of models scaled rotary embedding.
@@ -694,9 +695,9 @@ def get_rope(
             assert max_position == original_max_position * scaling_factor
 
             rotary_emb = NTKYaRNScalingRotaryEmbedding(head_size, rotary_dim,
-                                                    original_max_position,
-                                                    base, is_neox_style,
-                                                    scaling_factor)
+                                                       original_max_position,
+                                                       base, is_neox_style,
+                                                       scaling_factor)
         else:
             raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
     _ROPE_DICT[key] = rotary_emb

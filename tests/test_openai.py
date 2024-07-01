@@ -60,8 +60,9 @@ schema = """{
 }"""
 regex = "(-)?(0|[1-9][0-9]*)(\\.[0-9]+)?([eE][+-][0-9]+)?"
 
-choices = ["It is Joe Biden!", "It is Emmanual Macron!", "It is Angela Merkel!"]
-
+choices = [
+    "It is Joe Biden!", "It is Emmanual Macron!", "It is Angela Merkel!"
+]
 
 HEADERS = {
     "Content-Type": "application/json",
@@ -181,8 +182,10 @@ def test_chat(model, stream):
     completion = client.chat.completions.create(
         messages=[
             {
-                "role": "user",
-                "content": "Give me a character named Charles with a strength of 124.",
+                "role":
+                "user",
+                "content":
+                "Give me a character named Charles with a strength of 124.",
             },
         ],
         model=model,
@@ -207,8 +210,10 @@ def test_chat_json(model, stream):
     completion = client.chat.completions.create(
         messages=[
             {
-                "role": "user",
-                "content": "Give me a character named Charles with a strength of 124.",
+                "role":
+                "user",
+                "content":
+                "Give me a character named Charles with a strength of 124.",
             },
         ],
         model=model,
@@ -236,7 +241,10 @@ def test_chat_regex(model, stream):
     print(f"=== Chat Regex (model={model}, stream={stream}) ===")
     completion = client.chat.completions.create(
         messages=[
-            {"role": "user", "content": "Give me the 10 first digits of PI."},
+            {
+                "role": "user",
+                "content": "Give me the 10 first digits of PI."
+            },
         ],
         model=model,
         stream=stream,
@@ -289,8 +297,10 @@ def test_json_schema_and_guided_regex():
         completion = client.chat.completions.create(
             messages=[
                 {
-                    "role": "user",
-                    "content": "Give me a character named Charles with a strength of 124.",
+                    "role":
+                    "user",
+                    "content":
+                    "Give me a character named Charles with a strength of 124.",
                 },
             ],
             model=model,
@@ -328,7 +338,10 @@ def test_tokenize(model):
 def test_chat_tokenize(model):
     url = f"{HOST}/tokenize"
     data = {
-        "messages": [{"role": "user", "content": "What is the weather today?"}],
+        "messages": [{
+            "role": "user",
+            "content": "What is the weather today?"
+        }],
         "model": model,
     }
 

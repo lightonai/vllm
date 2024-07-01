@@ -299,7 +299,8 @@ class ChatCompletionRequest(OpenAIBaseModel):
         if regex is not None and guided_regex is None:
             data['guided_regex'] = regex
 
-        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        json_schema, guided_json = data.get('json_schema'), data.get(
+            'guided_json')
         if json_schema is not None and guided_json is None:
             data['guided_json'] = json_schema
 
@@ -493,7 +494,8 @@ class CompletionRequest(OpenAIBaseModel):
         if regex is not None and guided_regex is None:
             data['guided_regex'] = regex
 
-        json_schema, guided_json = data.get('json_schema'), data.get('guided_json')
+        json_schema, guided_json = data.get('json_schema'), data.get(
+            'guided_json')
         if json_schema is not None and guided_json is None:
             data['guided_json'] = json_schema
 
@@ -566,15 +568,9 @@ class TokenizeResponse(BaseModel):
 
 class InvocationRequest(BaseModel):
     endpoint: str
-    payload: Optional[
-        Union[
-            ChatCompletionRequest,
-            CompletionRequest,
-            TokenizeCompletionRequest,
-            AddLoRARequest,
-        ]
-    ]
-    
+    payload: Optional[Union[ChatCompletionRequest, CompletionRequest,
+                            TokenizeCompletionRequest, AddLoRARequest, ]]
+
 
 class CompletionLogProbs(OpenAIBaseModel):
     text_offset: List[int] = Field(default_factory=list)

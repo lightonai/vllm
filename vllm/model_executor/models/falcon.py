@@ -145,13 +145,12 @@ class FalconAttention(nn.Module):
             rope_theta = getattr(config, "rope_theta", 10000)
             max_position_embeddings = getattr(config,
                                               "max_position_embeddings", 8192)
-            self.rotary_emb = get_rope(
-                self.head_dim,
-                rotary_dim=self.head_dim,
-                max_position=max_position_embeddings,
-                base=rope_theta,
-                rope_scaling=getattr(config, "rope_scaling", None)
-            )
+            self.rotary_emb = get_rope(self.head_dim,
+                                       rotary_dim=self.head_dim,
+                                       max_position=max_position_embeddings,
+                                       base=rope_theta,
+                                       rope_scaling=getattr(
+                                           config, "rope_scaling", None))
             self.attn = Attention(self.num_heads,
                                   self.head_dim,
                                   self.inv_norm_factor,
@@ -386,17 +385,14 @@ class FalconForCausalLM(nn.Module):
         ],
     }
     supported_lora_modules = [
-        'query_key_value', 
-        'dense', 
-        'dense_h_to_4h', 
-        'dense_4h_to_h'
+        'query_key_value', 'dense', 'dense_h_to_4h', 'dense_4h_to_h'
     ]
     embedding_modules = {
         "word_embeddings": "input_embeddings",
         "lm_head": "output_embeddings",
     }
     embedding_padding_modules = ["lm_head"]
-    
+
     def __init__(
         self,
         config: FalconConfig,
