@@ -101,8 +101,13 @@ def deploy(
     loras = get_value(config_data, None, "loras")
     max_lora_rank = get_value(config_data, None, "max_lora_rank")
     max_num_seqs = get_value(config_data, None, "max_num_seqs")
+    enable_lora = get_value(config_data, None, "enable_lora")
+    max_loras = get_value(config_data, None, "max_loras")
 
-    has_loras = loras is not None and len(loras) > 0
+    if loras and not enable_lora:
+        raise ValueError(
+            "enable_lora must be set to true in the config if LoRAs are provided."
+        )
 
     image_version = image.split(":")[-1].replace(".", "-")
 
@@ -155,11 +160,17 @@ def deploy(
     if trust_remote_code is not None:
         container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code).lower()
 
-    if has_loras:
-        container_env["ENABLE_LORA"] = "true"
+    if enable_lora is not None:
+        container_env["ENABLE_LORA"] = str(enable_lora).lower()
+
+    if max_loras is not None:
+        container_env["MAX_LORAS"] = str(max_loras)
+
+    if max_lora_rank is not None:
+        container_env["MAX_LORA_RANK"] = str(max_lora_rank)
+
+    if loras:
         container_env["LORA_MODULES"] = parse_lora_modules(loras)
-        if max_lora_rank is not None:
-            container_env["MAX_LORA_RANK"] = str(max_lora_rank)
 
     print("\nThis configuration will be applied: ")
     print_color(
@@ -183,7 +194,7 @@ def deploy(
         "Environment": container_env,
     }
 
-    if has_loras:
+    if loras:
         primary_container["ModelDataSource"] = {
             "S3DataSource": {
                 "CompressionType": "Gzip",
