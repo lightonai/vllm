@@ -6,8 +6,9 @@ from vllm.entrypoints.openai.protocol import (
     TokenizeResponse,
     TokenizeCompletionRequest
 )
-from vllm.entrypoints.openai.serving_engine import OpenAIServing, LoRA
+from vllm.entrypoints.openai.serving_engine import OpenAIServing, LoRAModulePath
 from typing import List, Optional
+from vllm.config import ModelConfig
 
 logger = init_logger(__name__)
 
@@ -16,11 +17,15 @@ class OpenAIServingTokenize(OpenAIServing):
 
     def __init__(self,
                  engine: AsyncLLMEngine,
-                 served_model: str,
+                 model_config: ModelConfig,
+                 served_model_names: List[str],
                  response_role: str,
-                 lora_modules: Optional[List[LoRA]] = None,
-                 chat_template=None):
-        super().__init__(engine=engine, served_model=served_model, lora_modules=lora_modules)
+                 lora_modules: Optional[List[LoRAModulePath]] = None,
+                 chat_template: Optional[str] = None):
+        super().__init__(engine=engine,
+                         model_config=model_config,
+                         served_model_names=served_model_names,
+                         lora_modules=lora_modules)
         self.response_role = response_role
         self._load_chat_template(chat_template)
 
@@ -63,24 +68,31 @@ class OpenAIServingTokenize(OpenAIServing):
 
         return TokenizeResponse(id=request_id, n_tokens=len(input_ids), text=text, tokens=tokens_response, model=request.model)
 
-    def _load_chat_template(self, chat_template):
+    def _load_chat_template(self, chat_template: Optional[str]):
+        tokenizer = self.tokenizer
+
         if chat_template is not None:
             try:
                 with open(chat_template, "r") as f:
-                    self.tokenizer.chat_template = f.read()
-            except OSError:
+                    tokenizer.chat_template = f.read()
+            except OSError as e:
+                JINJA_CHARS = "{}\n"
+                if not any(c in chat_template for c in JINJA_CHARS):
+                    msg = (f"The supplied chat template ({chat_template}) "
+                           f"looks like a file path, but it failed to be "
+                           f"opened. Reason: {e}")
+                    raise ValueError(msg) from e
+
                 # If opening a file fails, set chat template to be args to
                 # ensure we decode so our escape are interpreted correctly
-                self.tokenizer.chat_template = codecs.decode(
+                tokenizer.chat_template = codecs.decode(
                     chat_template, "unicode_escape")
 
-            logger.info(
-                f"Using supplied chat template:\n{self.tokenizer.chat_template}"
-            )
-        elif self.tokenizer.chat_template is not None:
-            logger.info(
-                f"Using default chat template:\n{self.tokenizer.chat_template}"
-            )
+            logger.info("Using supplied chat template:\n%s",
+                        tokenizer.chat_template)
+        elif tokenizer.chat_template is not None:
+            logger.info("Using default chat template:\n%s",
+                        tokenizer.chat_template)
         else:
             logger.warning(
                 "No chat template provided. Chat API will not work.")
