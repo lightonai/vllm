@@ -199,6 +199,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 ENV VLLM_USAGE_SOURCE production-docker-image
 
+COPY vllm/entrypoint.sh vllm/entrypoint.sh
+
 RUN chmod +x vllm/entrypoint.sh
 ENTRYPOINT ["vllm/entrypoint.sh"]
 #################### OPENAI API SERVER ####################
