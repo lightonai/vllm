@@ -415,6 +415,9 @@ class EngineArgs:
                             'performance of the scaled model.')
         parser.add_argument('--enforce-eager',
                             action='store_true',
+                            default=os.getenv('ENFORCE_EAGER',
+                                              'false').lower()
+                            in ('true', '1', 't'),
                             help='Always use eager-mode PyTorch. If False, '
                             'will use eager mode and CUDA graph in hybrid '
                             'for maximal performance and flexibility.')
@@ -434,7 +437,9 @@ class EngineArgs:
                             'larger than this, we fall back to eager mode.')
         parser.add_argument('--disable-custom-all-reduce',
                             action='store_true',
-                            default=EngineArgs.disable_custom_all_reduce,
+                            default=os.getenv('DISABLE_CUSTOM_ALL_REDUCE',
+                                              'false').lower()
+                            in ('true', '1', 't'),
                             help='See ParallelConfig.')
         parser.add_argument('--tokenizer-pool-size',
                             type=int,
