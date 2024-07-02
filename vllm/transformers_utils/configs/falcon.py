@@ -47,6 +47,7 @@ class RWConfig(PretrainedConfig):
         bias=False,
         parallel_attn=False,
         new_decoder_architecture=False,
+        num_ln_in_parallel_attn=None,
         **kwargs,
     ) -> None:
         self.vocab_size = vocab_size
@@ -69,6 +70,7 @@ class RWConfig(PretrainedConfig):
         self.bias = bias
         self.parallel_attn = parallel_attn
         self.new_decoder_architecture = new_decoder_architecture
+        self.num_ln_in_parallel_attn = num_ln_in_parallel_attn
 
         if self.hidden_size == 8192:
             # Hack for falcon-40b
