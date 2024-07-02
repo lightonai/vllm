@@ -507,6 +507,7 @@ class NTKYaRNScalingRotaryEmbedding(RotaryEmbedding):
         base: int,
         is_neox_style: bool,
         scaling_factor: float,
+        dtype: torch.dtype,
         *,
         attn_factor: float = 1,
     ) -> None:
@@ -516,7 +517,7 @@ class NTKYaRNScalingRotaryEmbedding(RotaryEmbedding):
         self.mscale = float(
             _yarn_get_mscale(self.scaling_factor) * attn_factor)
         super().__init__(head_size, rotary_dim, max_position_embeddings, base,
-                         is_neox_style)
+                         is_neox_style, dtype)
 
     def _compute_cos_sin_cache(self) -> torch.Tensor:
         max_len = self.max_position_embeddings * self.scaling_factor
@@ -870,7 +871,7 @@ def get_rope(
             rotary_emb = NTKYaRNScalingRotaryEmbedding(head_size, rotary_dim,
                                                        original_max_position,
                                                        base, is_neox_style,
-                                                       scaling_factor)
+                                                       scaling_factor, dtype)
         else:
             raise ValueError(f"Unknown RoPE scaling type {scaling_type}")
     _ROPE_DICT[key] = rotary_emb

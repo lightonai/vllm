@@ -334,6 +334,7 @@ class FalconModel(nn.Module):
         config: FalconConfig,
         cache_config: Optional[CacheConfig] = None,
         quant_config: Optional[QuantizationConfig] = None,
+        lora_config: Optional[LoRAConfig] = None,
     ):
         super().__init__()
         self.config = config
@@ -398,11 +399,13 @@ class FalconForCausalLM(nn.Module):
         config: FalconConfig,
         cache_config: Optional[CacheConfig] = None,
         quant_config: Optional[QuantizationConfig] = None,
+        lora_config: Optional[LoRAConfig] = None,
     ):
         super().__init__()
         self.config = config
         self.quant_config = quant_config
-        self.transformer = FalconModel(config, cache_config, quant_config)
+        self.transformer = FalconModel(config, cache_config, quant_config,
+                                       lora_config)
         # only Falcon-11B doesn't share lm_head weight with word embeddings
         # and previous Falcon model doesn't have tie_word_embeddings config
         # so we set tie_word_embeddings to True by default
