@@ -27,18 +27,76 @@ docker run --runtime nvidia --gpus all \
 
 ## Development
 
-### Build the image
+### Setup dev mode
+
+Clone the repo and setup the base docker image:
 
 ```bash
-sh docker/build.sh
+docker run --gpus all -it --rm --ipc=host \
+	-v $(pwd):/workspace/vllm \
+	-v ~/.cache/huggingface:/root/.cache/huggingface \
+	-p 8000:8000 \
+	nvcr.io/nvidia/pytorch:23.10-py3
 ```
 
-### Deploy the image to ECR
+Once done, install vLLM in dev mode and the dev requirements in the container:
+    
+```bash
+cd vllm
+export VLLM_INSTALL_PUNICA_KERNELS=1
+export MAX_JOBS=8
+pip install -e .
+pip install -r requirements-dev.txt
+pip install boto3
+```
 
-Once your changes are ready, you can deploy the image to ECR:
+It will take a while but once done, open another terminal on the host and run:
 
 ```bash
-sh docker/deploy.sh
+docker commit <container_id> vllm_dev
+```
+
+This will create a new image `vllm_dev` with the vLLM code installed. You won't need to install the dev dependencies again each time you start a new container.
+
+From now on, you can use:
+
+```bash
+docker run --gpus all -it --rm --ipc=host \
+	-v $(pwd):/workspace/vllm \
+	-v ~/.cache/huggingface:/root/.cache/huggingface \
+	-p 8000:8000 \
+	vllm_dev
+```
+
+### Launch the server
+
+Enter into the `vllm_dev` container and run:
+
+```bash
+python -m vllm.entrypoints.openai.api_server \
+    --model meta-llama/Meta-Llama-3-8B-Instruct
+```
+
+### Format the code
+
+Enter into the `vllm_dev` container and run:
+
+```bash
+bash format.sh
+```
+
+### Build the image
+
+Once your changes are ready, you can build the prod image:
+
+```bash
+bash docker/build.sh
+```
+
+And deploy it to ECR:
+
+```bash
+bash docker/deploy.sh <version>
 ```
 
 ### Upgrade version
@@ -49,7 +107,7 @@ You can upgrade the version of vLLM by rebasing on the official repo:
 git clone https://github.com/lightonai/vllm
 git remote add official https://github.com/vllm-project/vllm
 git fetch official
-git rebase official/main
+git rebase <commit_sha> # Rebase on a specific commit of the official repo (i.e. the commit sha of the last stable release)
 git rebase --continue # After resolving conflicts (if any), continue the rebase
 git push origin main --force
 ```
