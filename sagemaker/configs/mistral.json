@@ -1,8 +1,0 @@
-{
-    "model": "mistralai/Mistral-7B-Instruct-v0.2",
-    "image": "vllm:0.5.0.post1-1",
-    "pipeline_parallel_size": 1,
-    "tensor_parallel_size": 1,
-    "sagemaker_instance_type": "ml.g5.2xlarge",
-    "max_model_len": 8192
-}

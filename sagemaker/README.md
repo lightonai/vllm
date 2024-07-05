@@ -11,7 +11,7 @@ pip install -r requirements-deploy.txt
 Deploy a model to SageMaker:
 
 ```bash
-python sagemaker/deploy.py --config_path sagemaker/configs/mistral.json
+python sagemaker/deploy.py --config_path sagemaker/configs/llama3-8b.json
 ```
 
 > You can create more models configs in the `sagemaker/configs` folder.
