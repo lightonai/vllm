@@ -6,6 +6,9 @@ import string
 
 import boto3
 import fire
+import requests
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 
 
 def generate_random_string(length):
@@ -28,10 +31,6 @@ def read_json_file(config_path: str):
 
 
 def push_lora(*, lora_name, s3_uri, endpoint_name, region):
-    import requests
-    from botocore.auth import SigV4Auth
-    from botocore.awsrequest import AWSRequest
-
     data = {
         "endpoint": "/loras",
         "payload": {
