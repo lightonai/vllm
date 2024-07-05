@@ -21,94 +21,68 @@ def get_sagemaker_vars(region, base_image_name):
     )
 
 
-def parse_lora_modules(lora_modules):
-    mods = []
-    for module in lora_modules:
-        mods.append(f"{module['name']}={module['path']}")
-    return " ".join(mods)
-
-
-def print_color(text, color):
-    colors = {
-        "red": "\033[91m",
-        "green": "\033[92m",
-        "yellow": "\033[93m",
-        "blue": "\033[94m",
-        "purple": "\033[95m",
-        "cyan": "\033[96m",
-        "white": "\033[97m",
-    }
-    print(colors[color] + text + "\033[0m")
-
-
 def read_json_file(config_path: str):
     with open(config_path, "r") as file:
         data = json.load(file)
     return data
 
 
-def get_value(config_data, cli_value, key):
-    """
-    Get the value from the CLI if it exists, otherwise use the config value.
-    """
-    if cli_value is not None:
-        print_color(f"Using {key} from CLI: {cli_value}", "blue")
-        return cli_value
-    elif config_data is not None:
-        print_color(f"Using {key} from config: {config_data.get(key, None)}",
-                    "yellow")
-        return config_data.get(key, None)
-    else:
-        return None
+def push_lora(*, lora_name, s3_uri, endpoint_name, region):
+    import requests
+    from botocore.auth import SigV4Auth
+    from botocore.awsrequest import AWSRequest
+
+    data = {
+        "endpoint": "/loras",
+        "payload": {
+            "lora_name": lora_name,
+            "s3_uri": s3_uri,
+        },
+    }
+
+    def sign_request(url, method="POST", region=region, data=None):
+        session = boto3.Session()
+        credentials = session.get_credentials()
+
+        request = AWSRequest(method=method, url=url, data=json.dumps(data))
+        SigV4Auth(credentials, "sagemaker", region).add_auth(request)
+
+        return dict(request.headers)
+
+    url = f"https://runtime.sagemaker.{region}.amazonaws.com/endpoints/{endpoint_name}/invocations"
+
+    headers_auth = sign_request(url, data=data)
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    response = requests.post(url,
+                             headers={
+                                 **headers,
+                                 **headers_auth
+                             },
+                             json=data)
+    if response.status_code == 200:
+        print(f"Successfully pushed LoRA {lora_name}")
 
 
-def deploy(
-    config_path: str,
-    model: str = None,
-    endpoint_name: str = None,
-    image: str = None,
-    instance_type: str = None,
-    pipeline_parallel_size: int = None,
-    tensor_parallel_size: int = None,
-    max_model_len: int = None,
-    region: str = "us-west-2",
-):
+def deploy(config_path: str, ):
     """
     Deploy a VLLM model to SageMaker.
-
-    Args:
-        model: The model name to deploy (i.e. `mistralai/Mistral-7B-Instruct-v0.2`).
-        name: The name of the endpoint.
-        region: The AWS region to deploy to.
-        instance_type: The instance type to deploy to.
-        base_image_name: The base image name to use.
     """
-    config_data = read_json_file(config_path)
-    model = get_value(config_data, model, "model")
-    image = get_value(config_data, image, "image")
-    instance_type = get_value(config_data, instance_type,
-                              "sagemaker_instance_type")
-    pipeline_parallel_size = get_value(config_data, pipeline_parallel_size,
-                                       "pipeline_parallel_size")
-    tensor_parallel_size = get_value(config_data, tensor_parallel_size,
-                                     "tensor_parallel_size")
-    max_model_len = get_value(config_data, max_model_len, "max_model_len")
-    trust_remote_code = get_value(config_data, None, "trust_remote_code")
-    loras = get_value(config_data, None, "loras")
-    max_lora_rank = get_value(config_data, None, "max_lora_rank")
-    max_num_seqs = get_value(config_data, None, "max_num_seqs")
-    enable_lora = get_value(config_data, None, "enable_lora")
-    max_loras = get_value(config_data, None, "max_loras")
 
-    if loras and not enable_lora:
-        raise ValueError(
-            "enable_lora must be set to true in the config if LoRAs are provided."
-        )
+    config_data = read_json_file(config_path)
+    model = config_data.get("model")
+    image = config_data.get("image")
+    instance_type = config_data.get("sagemaker_instance_type")
+    loras = config_data.get("loras")
+    region = config_data.get("region", "us-west-2")
+    env_vars = config_data.get("env_vars", {})
 
     image_version = image.split(":")[-1].replace(".", "-")
 
     random_id = generate_random_string(5)
-    name = model.split("/")[-1] if endpoint_name is None else endpoint_name
+    name = model.split("/")[-1]
     endpoint_name = ("vllm-" + image_version + "--" +
                      re.sub("[^0-9a-zA-Z]", "-", name) + "-" + random_id)
     model_name = f"{endpoint_name}-mdl"
@@ -121,47 +95,36 @@ def deploy(
             63), "Endpoint config name must be less than 63 characters"
     assert os.getenv("HF_TOKEN") is not None, "HF_TOKEN is required"
 
-    # get sagemaker image and role
-    vllm_image_uri, role = get_sagemaker_vars(region, image)
-
     assert model is not None
-    assert pipeline_parallel_size is not None
-    assert tensor_parallel_size is not None
+
+    for key, value in env_vars.items():
+        assert isinstance(
+            value, str
+        ), f"env_vars values must be strings. Found '{key}' associated with '{value}' with type {type(value)}."
+
+    if loras and len(loras) > 0:
+        assert (env_vars.get("ENABLE_LORA") is not None
+                ), "ENABLE_LORA env var is required when 'loras' are provided"
+        assert (env_vars.get("MAX_LORAS") is not None
+                ), "MAX_LORAS env var is required when 'loras' are provided"
+        assert (
+            env_vars.get("MAX_LORA_RANK") is not None
+        ), "MAX_LORA_RANK env var is required when 'loras' are provided"
+        for lora in loras:
+            assert lora.get("lora_name") is not None, "lora_name is required"
+            assert lora.get("s3_uri") is not None, "s3_uri is required"
 
     container_env = {
         "MODEL": model,
-        "PIPELINE_PARALLEL_SIZE": str(pipeline_parallel_size),
-        "TENSOR_PARALLEL_SIZE": str(tensor_parallel_size),
         "SERVED_MODEL_NAME": endpoint_name,
-        "MAX_RUNNING_TIME_PER_REQUEST": "180",
+        "HF_TOKEN": os.getenv("HF_TOKEN"),
+        **env_vars,
     }
 
-    if os.getenv("HF_TOKEN") is not None:
-        container_env["HF_TOKEN"] = os.getenv("HF_TOKEN")
-
-    if max_model_len is not None:
-        container_env["MAX_MODEL_LEN"] = str(max_model_len)
-
-    if max_num_seqs is not None:
-        container_env["MAX_NUM_SEQS"] = str(max_num_seqs)
-
-    if trust_remote_code is not None:
-        container_env["TRUST_REMOTE_CODE"] = str(trust_remote_code).lower()
-
-    if enable_lora is not None:
-        container_env["ENABLE_LORA"] = str(enable_lora).lower()
-
-    if max_loras is not None:
-        container_env["MAX_LORAS"] = str(max_loras)
-
-    if max_lora_rank is not None:
-        container_env["MAX_LORA_RANK"] = str(max_lora_rank)
-
-    if loras:
-        container_env["LORA_MODULES"] = parse_lora_modules(loras)
+    vllm_image_uri, role = get_sagemaker_vars(region, image)
 
     print("\nThis configuration will be applied: ")
-    print_color(
+    print(
         json.dumps(
             {
                 "container_env": container_env,
@@ -173,25 +136,12 @@ def deploy(
                 "image_uri": vllm_image_uri,
             },
             indent=4,
-        ),
-        "green",
-    )
+        ))
 
     primary_container = {
         "Image": vllm_image_uri,
         "Environment": container_env,
     }
-
-    if loras:
-        primary_container["ModelDataSource"] = {
-            "S3DataSource": {
-                "CompressionType": "Gzip",
-                "S3DataType": "S3Object",
-                "S3Uri": loras[0]["s3_uri"],
-            }
-        }
-
-    print(json.dumps(primary_container, indent=4))
 
     # Ask for confirmation
     print("\nDo you want to continue? (yes/no)")
@@ -239,6 +189,15 @@ def deploy(
     print("=" * 20)
     print("Endpoint name: " + endpoint_name)
     print("=" * 20)
+
+    if loras and len(loras) > 0:
+        for lora in loras:
+            push_lora(
+                lora_name=lora.get("lora_name"),
+                s3_uri=lora.get("s3_uri"),
+                endpoint_name=endpoint_name,
+                region=region,
+            )
 
     return endpoint_name
 
