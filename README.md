@@ -17,12 +17,8 @@ docker run --runtime nvidia --gpus all \
     -v ~/.cache/huggingface:/root/.cache/huggingface \
     -p 8000:8000 \
     --ipc=host \
-    -e SERVED_MODEL_NAME=command-r \
-    -e TRUST_REMOTE_CODE=false \
-    -e MODEL=CohereForAI/c4ai-command-r-v01 \
     vllm \
-    --tensor-parallel-size 4 \
-    --host 0.0.0.0
+    --model meta-llama/Meta-Llama-3-8B-Instruct
 ```
 
 ## Development
@@ -40,7 +36,7 @@ docker run --gpus all -it --rm --ipc=host \
 ```
 
 Once done, install vLLM in dev mode and the dev requirements in the container:
-    
+
 ```bash
 cd vllm
 export VLLM_INSTALL_PUNICA_KERNELS=1
@@ -50,7 +46,7 @@ pip install -r requirements-dev.txt
 pip install boto3
 ```
 
-It will take a while but once done, open another terminal on the host and run:
+It will take a while but once done, open another terminal **on the host** and run:
 
 ```bash
 docker commit <container_id> vllm_dev
@@ -58,7 +54,7 @@ docker commit <container_id> vllm_dev
 
 This will create a new image `vllm_dev` with the vLLM code installed. You won't need to install the dev dependencies again each time you start a new container.
 
-From now on, you can use:
+From now on, you can exit the initial container and run this command to enter into the dev container:
 
 ```bash
 docker run --gpus all -it --rm --ipc=host \
@@ -87,7 +83,7 @@ bash format.sh
 
 ### Build the image
 
-Once your changes are ready, you can build the prod image:
+Once your changes are ready, you can build the prod image. Run these commands **on the host**:
 
 ```bash
 bash docker/build.sh
