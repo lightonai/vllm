@@ -65,7 +65,7 @@ def push_lora(*, lora_name, s3_uri, endpoint_name, region):
         print(f"Successfully pushed LoRA {lora_name}")
 
 
-def deploy(config_path: str, ):
+def deploy(config_path: str):
     """
     Deploy a VLLM model to SageMaker.
     """
