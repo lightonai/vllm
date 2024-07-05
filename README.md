@@ -10,7 +10,7 @@ Pull the `latest` image from ECR:
 bash docker/pull.sh vllm:latest
 ```
 
-Run the container (with Command-R model in this case):
+Run the container (with Llama3 8B in this case):
 
 ```bash
 docker run --runtime nvidia --gpus all \
