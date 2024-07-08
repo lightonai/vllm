@@ -379,11 +379,7 @@ class FalconModel(nn.Module):
 
 class FalconForCausalLM(nn.Module):
     packed_modules_mapping = {
-        "query_key_value": [
-            "q_proj",
-            "k_proj",
-            "v_proj",
-        ],
+        "query_key_value": ["query_key_value"],
     }
     supported_lora_modules = [
         'query_key_value', 'dense', 'dense_h_to_4h', 'dense_4h_to_h'
