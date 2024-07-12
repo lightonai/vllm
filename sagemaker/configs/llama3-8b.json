@@ -1,11 +1,10 @@
 {
     "model": "meta-llama/Meta-Llama-3-8B-Instruct",
-    "image": "vllm:0.5.0.post1-1",
+    "image": "vllm:0.5.1-1",
     "sagemaker_instance_type": "ml.g5.2xlarge",
     "env_vars": {
         "PIPELINE_PARALLEL_SIZE": "1",
         "TENSOR_PARALLEL_SIZE": "1",
-        "MAX_RUNNING_TIME_PER_REQUEST": "180",
         "DISABLE_CUSTOM_ALL_REDUCE": "true"
     }
 }
