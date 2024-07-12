@@ -558,13 +558,13 @@ class TokenizeCompletionRequest(BaseModel):
     add_generation_prompt: Optional[bool] = True
 
 
-class TokenizeResponse(BaseModel):
+class TokenizeResponseCustom(BaseModel):
     id: str
     tokens: Any
     text: str
     n_tokens: int
     model: str
-    
+
 
 class CompletionLogProbs(OpenAIBaseModel):
     text_offset: List[int] = Field(default_factory=list)
@@ -793,13 +793,6 @@ class DetokenizeResponse(OpenAIBaseModel):
 
 class InvocationRequest(BaseModel):
     endpoint: str
-    payload: Optional[
-        Union[
-            ChatCompletionRequest,
-            CompletionRequest,
-            TokenizeCompletionRequest,
-            DetokenizeRequest,
-            EmbeddingRequest,
-            AddLoRARequest,
-        ]
-    ]
+    payload: Optional[Union[ChatCompletionRequest, CompletionRequest,
+                            TokenizeCompletionRequest, DetokenizeRequest,
+                            EmbeddingRequest, AddLoRARequest, ]]

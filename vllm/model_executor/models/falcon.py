@@ -48,6 +48,8 @@ from vllm.sequence import IntermediateTensors, SamplerOutput
 from vllm.transformers_utils.configs import RWConfig
 from vllm.config import LoRAConfig
 
+from .interfaces import SupportsLoRA
+
 FalconConfig = Union[HF_FalconConfig, RWConfig]
 
 
@@ -377,7 +379,7 @@ class FalconModel(nn.Module):
         return hidden_states
 
 
-class FalconForCausalLM(nn.Module):
+class FalconForCausalLM(nn.Module, SupportsLoRA):
     packed_modules_mapping = {
         "query_key_value": ["query_key_value"],
     }
