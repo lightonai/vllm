@@ -22,20 +22,15 @@ import vllm.envs as envs
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.entrypoints.openai.cli_args import make_arg_parser
-# yapf conflicts with isort for this block
-# yapf: disable
-from vllm.entrypoints.openai.protocol import (ChatCompletionRequest,
-                                              ChatCompletionResponse,
-                                              CompletionRequest,
-                                              DetokenizeRequest,
-                                              DetokenizeResponse,
-                                              EmbeddingRequest, ErrorResponse,
-                                              TokenizeRequest,
-                                              TokenizeResponse, InvocationRequest, TokenizeCompletionRequest, AddLoRARequest)
+
+from vllm.entrypoints.openai.protocol import (
+    ChatCompletionRequest, ChatCompletionResponse, CompletionRequest,
+    DetokenizeRequest, DetokenizeResponse, EmbeddingRequest, ErrorResponse,
+    InvocationRequest, TokenizeCompletionRequest, AddLoRARequest)
+
 from vllm.entrypoints.openai.serving_engine import LoRAModulePath
 from vllm.logger import init_logger
 from vllm.usage.usage_lib import UsageContext
-# yapf: enable
 from vllm.entrypoints.openai.serving_chat import OpenAIServingChat
 from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
 from vllm.entrypoints.openai.serving_embedding import OpenAIServingEmbedding

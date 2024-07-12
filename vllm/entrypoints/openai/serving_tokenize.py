@@ -2,7 +2,7 @@ import uuid
 import codecs
 from vllm.logger import init_logger
 from vllm.engine.async_llm_engine import AsyncLLMEngine
-from vllm.entrypoints.openai.protocol import (TokenizeResponse,
+from vllm.entrypoints.openai.protocol import (TokenizeResponseCustom,
                                               TokenizeCompletionRequest)
 from vllm.entrypoints.openai.serving_engine import OpenAIServing, LoRAModulePath
 from typing import List, Optional
@@ -64,11 +64,11 @@ class OpenAIServingTokenize(OpenAIServing):
 
         logger.info(f"Tokenize request: {request_id}")
 
-        return TokenizeResponse(id=request_id,
-                                n_tokens=len(input_ids),
-                                text=text,
-                                tokens=tokens_response,
-                                model=request.model)
+        return TokenizeResponseCustom(id=request_id,
+                                      n_tokens=len(input_ids),
+                                      text=text,
+                                      tokens=tokens_response,
+                                      model=request.model)
 
     def _load_chat_template(self, chat_template: Optional[str]):
         tokenizer = self.tokenizer
