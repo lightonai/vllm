@@ -102,7 +102,7 @@ class OpenAIServing:
                         prompt_adapter_num_virtual_tokens=num_virtual_tokens))
 
         self.request_logger = request_logger
-        
+
     async def _add_lora(self, lora: LoRAModulePath):
         self.lora_requests.append(
             LoRARequest(

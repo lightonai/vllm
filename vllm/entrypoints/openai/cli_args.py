@@ -34,6 +34,7 @@ class PromptAdapterParserAction(argparse.Action):
             adapter_list.append(PromptAdapterPath(name, path))
         setattr(namespace, self.dest, adapter_list)
 
+
 def get_lora_list(lora_modules):
     if not lora_modules:
         return None

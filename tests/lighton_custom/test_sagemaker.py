@@ -47,7 +47,8 @@ def test_completion(model):
             "model": model,
             "temperature": 0.0,
             "max_tokens": 100,
-            "prompt": "Give me a character named Charles with a strength of 124.",
+            "prompt":
+            "Give me a character named Charles with a strength of 124.",
             "echo": False,
         },
     }
@@ -71,13 +72,18 @@ def test_chat(model):
     data = {
         "endpoint": "/chat/completions",
         "payload": {
-            "model": model,
-            "temperature": 0.0,
-            "max_tokens": 100,
+            "model":
+            model,
+            "temperature":
+            0.0,
+            "max_tokens":
+            100,
             "messages": [
                 {
-                    "role": "user",
-                    "content": "Give me a character named Charles with a strength of 124.",
+                    "role":
+                    "user",
+                    "content":
+                    "Give me a character named Charles with a strength of 124.",
                 },
             ],
         },
@@ -118,9 +124,10 @@ def test_chat_tokenize(model):
     data = {
         "endpoint": "/tokenize",
         "payload": {
-            "messages": [
-                {"role": "user", "content": "What is the weather today?"}
-            ],
+            "messages": [{
+                "role": "user",
+                "content": "What is the weather today?"
+            }],
             "model": model,
         },
     }

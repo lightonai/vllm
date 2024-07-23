@@ -551,21 +551,6 @@ class AddLoRARequest(BaseModel):
     local_path: Optional[str] = None
 
 
-class TokenizeCompletionRequest(BaseModel):
-    model: str
-    prompt: Optional[str] = None
-    messages: Optional[Union[str, List[Dict[str, str]]]] = None
-    add_generation_prompt: Optional[bool] = True
-
-
-class TokenizeResponseCustom(BaseModel):
-    id: str
-    tokens: Any
-    text: str
-    n_tokens: int
-    model: str
-
-
 class CompletionLogProbs(OpenAIBaseModel):
     text_offset: List[int] = Field(default_factory=list)
     token_logprobs: List[Optional[float]] = Field(default_factory=list)

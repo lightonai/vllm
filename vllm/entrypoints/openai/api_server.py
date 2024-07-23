@@ -12,7 +12,6 @@ import uvicorn
 from fastapi import APIRouter, Request
 import boto3
 import tarfile
-from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
@@ -27,8 +26,8 @@ from vllm.entrypoints.openai.cli_args import make_arg_parser
 
 from vllm.entrypoints.openai.protocol import (
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest,
-    DetokenizeRequest, DetokenizeResponse, EmbeddingRequest, ErrorResponse,
-    InvocationRequest, TokenizeCompletionRequest, AddLoRARequest)
+    DetokenizeRequest, EmbeddingRequest, ErrorResponse, InvocationRequest,
+    TokenizeRequest, AddLoRARequest, TokenizeResponse)
 
 from vllm.entrypoints.openai.serving_engine import LoRAModulePath
 from vllm.logger import init_logger
@@ -38,10 +37,7 @@ from vllm.entrypoints.openai.serving_completion import OpenAIServingCompletion
 from vllm.entrypoints.openai.serving_embedding import OpenAIServingEmbedding
 from vllm.entrypoints.openai.serving_tokenization import (
     OpenAIServingTokenization)
-from vllm.logger import init_logger
-from vllm.usage.usage_lib import UsageContext
 from vllm.utils import FlexibleArgumentParser
-from vllm.entrypoints.openai.serving_tokenize import OpenAIServingTokenize
 from vllm.version import __version__ as VLLM_VERSION
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds
@@ -50,7 +46,6 @@ engine: AsyncLLMEngine
 engine_args: AsyncEngineArgs
 openai_serving_chat: OpenAIServingChat
 openai_serving_completion: OpenAIServingCompletion
-openai_serving_tokenize: OpenAIServingTokenize
 openai_serving_embedding: OpenAIServingEmbedding
 openai_serving_tokenization: OpenAIServingTokenization
 
@@ -94,6 +89,29 @@ def mount_metrics(app: fastapi.FastAPI):
 async def ping() -> Response:
     return await health()
 
+
+@router.post("/invocations")
+async def invocations(request: InvocationRequest, raw_request: Request):
+    if request.endpoint == "/models":
+        return await show_available_models()
+    elif request.endpoint == "/chat/completions":
+        return await create_chat_completion(request.payload, raw_request)
+    elif request.endpoint == "/completions":
+        return await create_completion(request.payload, raw_request)
+    elif request.endpoint == "/tokenize":
+        return await tokenize(request.payload)
+    elif request.endpoint == "/detokenize":
+        return await detokenize(request.payload)
+    elif request.endpoint == "/embeddings":
+        return await create_embedding(request.payload, raw_request)
+    elif request.endpoint == "/loras":
+        return await add_lora(request.payload, raw_request)
+    else:
+        err = openai_serving_chat.create_error_response(
+            message=f"Endpoint {request.endpoint} not found")
+        return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
+
+
 @router.get("/health")
 async def health() -> Response:
     """Health check."""
@@ -119,33 +137,11 @@ async def detokenize(request: DetokenizeRequest):
         return JSONResponse(content=generator.model_dump(),
                             status_code=generator.code)
 
-@router.post("/invocations")
-async def invocations(request: InvocationRequest, raw_request: Request):
-    if request.endpoint == "/models":
-        return await show_available_models()
-    elif request.endpoint == "/chat/completions":
-        return await create_chat_completion(request.payload, raw_request)
-    elif request.endpoint == "/completions":
-        return await create_completion(request.payload, raw_request)
-    elif request.endpoint == "/tokenize":
-        return await tokenize(request.payload)
-    elif request.endpoint == "/detokenize":
-        return await detokenize(request.payload)
-    elif request.endpoint == "/embeddings":
-        return await create_embedding(request.payload, raw_request)
-    elif request.endpoint == "/loras":
-        return await add_lora(request.payload, raw_request)
-    else:
-        err = openai_serving_chat.create_error_response(
-            message=f"Endpoint {request.endpoint} not found")
-        return JSONResponse(err.model_dump(), status_code=HTTPStatus.NOT_FOUND)
-
 
 @router.get("/models")
 async def show_available_models():
     models = await openai_serving_completion.show_available_models()
     return JSONResponse(content=models.model_dump())
-
 
 
 @router.post("/loras")
