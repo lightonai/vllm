@@ -26,8 +26,8 @@ from vllm.entrypoints.openai.cli_args import make_arg_parser
 
 from vllm.entrypoints.openai.protocol import (
     ChatCompletionRequest, ChatCompletionResponse, CompletionRequest,
-    DetokenizeRequest, EmbeddingRequest, ErrorResponse, InvocationRequest,
-    TokenizeRequest, AddLoRARequest, TokenizeResponse)
+    DetokenizeRequest, DetokenizeResponse, EmbeddingRequest, ErrorResponse,
+    TokenizeRequest, TokenizeResponse, InvocationRequest, AddLoRARequest)
 
 from vllm.entrypoints.openai.serving_engine import LoRAModulePath
 from vllm.logger import init_logger
@@ -136,6 +136,9 @@ async def detokenize(request: DetokenizeRequest):
     if isinstance(generator, ErrorResponse):
         return JSONResponse(content=generator.model_dump(),
                             status_code=generator.code)
+    else:
+        assert isinstance(generator, DetokenizeResponse)
+        return JSONResponse(content=generator.model_dump())
 
 
 @router.get("/models")
