@@ -108,7 +108,7 @@ class OpenAIServing:
             LoRARequest(
                 lora_name=lora.name,
                 lora_int_id=len(self.lora_requests) + 1,
-                lora_local_path=lora.local_path,
+                lora_path=lora.path,
             ))
 
     async def show_available_models(self) -> ModelList:
