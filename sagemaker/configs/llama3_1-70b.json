@@ -4,6 +4,7 @@
     "sagemaker_instance_type": "ml.p4d.24xlarge",
     "env_vars": {
         "TENSOR_PARALLEL_SIZE": "8",
-        "DISABLE_CUSTOM_ALL_REDUCE": "true"
+        "DISABLE_CUSTOM_ALL_REDUCE": "true",
+        "MAX_MODEL_LEN": "32768"
     }
 }

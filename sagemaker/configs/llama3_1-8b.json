@@ -4,6 +4,7 @@
     "sagemaker_instance_type": "ml.g5.2xlarge",
     "env_vars": {
         "TENSOR_PARALLEL_SIZE": "1",
-        "DISABLE_CUSTOM_ALL_REDUCE": "true"
+        "DISABLE_CUSTOM_ALL_REDUCE": "true",
+        "MAX_MODEL_LEN": "32768"
     }
 }
