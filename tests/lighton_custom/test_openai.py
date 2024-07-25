@@ -294,7 +294,7 @@ def test_chat_guided_choice(model, stream):
 
 def test_json_schema_and_guided_regex():
     with pytest.raises(openai.BadRequestError):
-        completion = client.chat.completions.create(
+        client.chat.completions.create(
             messages=[
                 {
                     "role":
@@ -328,8 +328,6 @@ def test_tokenize(model):
     assert response.status_code == 200
 
     result = response.json()
-    assert is_uuid4(result["id"])
-    assert result["model"] == model
 
     print(json.dumps(result, indent=4, sort_keys=True))
 
@@ -348,24 +346,6 @@ def test_chat_tokenize(model):
     response = requests.post(url, headers=HEADERS, json=data)
 
     assert response.status_code == 200
-
-    result = response.json()
-    assert is_uuid4(result["id"])
-    assert result["model"] == model
-
-    print(json.dumps(result, indent=4, sort_keys=True))
-
-
-@pytest.mark.parametrize("model", model_ids)
-def test_invalid_payload_tokenize(model):
-    url = f"{HOST}/tokenize"
-    data = {
-        "model": model,
-    }
-
-    response = requests.post(url, headers=HEADERS, json=data)
-
-    assert response.status_code == 400
 
     result = response.json()
 

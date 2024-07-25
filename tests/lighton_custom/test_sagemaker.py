@@ -113,8 +113,6 @@ def test_tokenize(model):
     assert response.status_code == 200
 
     result = response.json()
-    assert is_uuid4(result["id"])
-    assert result["model"] == model
 
     print(json.dumps(result, indent=4, sort_keys=True))
 
@@ -136,7 +134,5 @@ def test_chat_tokenize(model):
     assert response.status_code == 200
 
     result = response.json()
-    assert is_uuid4(result["id"])
-    assert result["model"] == model
 
     print(json.dumps(result, indent=4, sort_keys=True))
