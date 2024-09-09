@@ -31,7 +31,7 @@ then
 fi
 
 # Build the Docker image with specified build arguments.
-if DOCKER_BUILDKIT=1 docker build . --target vllm-openai --tag "${REPOSITORY_NAME}" --build-arg max_jobs=8 --build-arg nvcc_threads=8
+if DOCKER_BUILDKIT=1 docker build . --target vllm-openai --tag "${REPOSITORY_NAME}" --build-arg max_jobs=8 --build-arg nvcc_threads=8 --build-arg VLLM_MAX_SIZE_MB=300
 then 
     docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:${VERSION_NUMBER}"
     docker push "$CONTAINER_URI:${VERSION_NUMBER}"

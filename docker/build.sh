@@ -1,1 +1,1 @@
-DOCKER_BUILDKIT=1 docker build . --target vllm-openai --tag vllm --build-arg max_jobs=8 --build-arg nvcc_threads=8
+DOCKER_BUILDKIT=1 docker build . --target vllm-openai --tag vllm --build-arg max_jobs=8 --build-arg nvcc_threads=8 --build-arg VLLM_MAX_SIZE_MB=300
