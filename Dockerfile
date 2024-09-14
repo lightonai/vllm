@@ -200,6 +200,9 @@ RUN mv vllm test_docs/
 # openai api server alternative
 FROM vllm-base AS vllm-openai
 
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install setuptools -U
+
 # install additional dependencies for openai api server
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install accelerate hf_transfer 'modelscope!=1.15.0' boto3
