@@ -414,6 +414,11 @@ def build_app(args: Namespace) -> FastAPI:
     else:
         app = FastAPI(lifespan=lifespan)
     app.include_router(router)
+
+    # Import and include the sagemaker router inside the function to avoid circular import
+    from vllm.entrypoints.openai.sagemaker import router as sagemaker_router
+    app.include_router(sagemaker_router)
+
     app.root_path = args.root_path
 
     mount_metrics(app)
