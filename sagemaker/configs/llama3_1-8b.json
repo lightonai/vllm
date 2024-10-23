@@ -1,5 +1,6 @@
 {
     "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "served_model_name": "llama-3-1-8b-instruct",
     "image": "vllm:0.6.3.post1-1",
     "sagemaker_instance_type": "ml.g5.2xlarge",
     "env_vars": {
