@@ -1,6 +1,6 @@
 {
     "model": "Qwen/Qwen2-VL-7B-Instruct",
-    "image": "vllm:0.6.1.post2-2",
+    "image": "vllm:0.6.3.post1-1",
     "sagemaker_instance_type": "ml.g5.12xlarge",
     "env_vars": {
         "PIPELINE_PARALLEL_SIZE": "1",

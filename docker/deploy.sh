@@ -30,20 +30,13 @@ then
     aws ecr create-repository --repository-name "${REPOSITORY_NAME}" --region "${REGION}" > /dev/null
 fi
 
-# Build the Docker image with specified build arguments.
-if bash docker/build.sh;
-then 
-    docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:${VERSION_NUMBER}"
-    docker push "$CONTAINER_URI:${VERSION_NUMBER}"
+docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:${VERSION_NUMBER}"
+docker push "$CONTAINER_URI:${VERSION_NUMBER}"
 
-    # Ask the user if the image should be tagged as latest.
-    read -p "Tag the image as latest? (y/n): " TAG_LATEST
-    
-    if [ "$TAG_LATEST" == "y" ]; then
-        docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:latest"
-        docker push "$CONTAINER_URI:latest"
-    fi
-else 
-	echo "Docker build failed."
-	exit 2	
-fi  
+# Ask the user if the image should be tagged as latest.
+read -p "Tag the image as latest? (y/n): " TAG_LATEST
+
+if [ "$TAG_LATEST" == "y" ]; then
+    docker tag "${REPOSITORY_NAME}" "$CONTAINER_URI:latest"
+    docker push "$CONTAINER_URI:latest"
+fi

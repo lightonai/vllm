@@ -14,7 +14,6 @@ from vllm.entrypoints.openai.api_server import (
     create_chat_completion,
     create_completion,
     health,
-    load_lora_adapter,
     logger,
     show_available_models,
     show_version,
@@ -78,6 +77,7 @@ async def invocations(request: InvocationRequest, raw_request: Request):
 
 
 if envs.VLLM_ALLOW_RUNTIME_LORA_UPDATING:
+    from vllm.entrypoints.openai.api_server import load_lora_adapter
 
     @router.post("/loras")
     async def add_lora(request: AddLoRARequest, raw_request: Request):
