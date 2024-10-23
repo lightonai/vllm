@@ -72,6 +72,7 @@ def deploy(config_path: str):
 
     config_data = read_json_file(config_path)
     model = config_data.get("model")
+    served_model_name = config_data.get("served_model_name")
     image = config_data.get("image")
     instance_type = config_data.get("sagemaker_instance_type")
     loras = config_data.get("loras")
@@ -115,7 +116,7 @@ def deploy(config_path: str):
 
     container_env = {
         "MODEL": model,
-        "SERVED_MODEL_NAME": endpoint_name,
+        "SERVED_MODEL_NAME": served_model_name or endpoint_name,
         "HF_TOKEN": os.getenv("HF_TOKEN"),
         **env_vars,
     }
