@@ -13,17 +13,21 @@ from vllm.entrypoints.openai.api_server import (
     chat,
     create_chat_completion,
     create_completion,
+    create_embedding,
     health,
     logger,
     show_available_models,
     show_version,
     tokenize,
+    detokenize,
 )
 from vllm.entrypoints.openai.protocol import (
     ChatCompletionRequest,
     CompletionRequest,
+    EmbeddingRequest,
     LoadLoraAdapterRequest,
     TokenizeRequest,
+    DetokenizeRequest,
 )
 
 s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-west-2"))
@@ -61,9 +65,15 @@ async def invocations(request: InvocationRequest, raw_request: Request):
     elif request.endpoint == "/v1/completions":
         payload = CompletionRequest.model_validate(request.payload)
         return await create_completion(payload, raw_request)
+    elif request.endpoint == "/v1/embeddings":
+        payload = EmbeddingRequest.model_validate(request.payload)
+        return await create_embedding(payload, raw_request)
     elif request.endpoint == "/tokenize":
         payload = TokenizeRequest.model_validate(request.payload)
         return await tokenize(payload, raw_request)
+    elif request.endpoint == "/detokenize":
+        payload = DetokenizeRequest.model_validate(request.payload)
+        return await detokenize(payload, raw_request)
     elif request.endpoint == "/loras":
         if envs.VLLM_ALLOW_RUNTIME_LORA_UPDATING:
             payload = AddLoRARequest.model_validate(request.payload)
