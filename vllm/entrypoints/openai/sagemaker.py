@@ -30,7 +30,11 @@ from vllm.entrypoints.openai.protocol import (
     DetokenizeRequest,
 )
 
-s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-west-2"))
+try:
+    s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-west-2"))
+except Exception as e:
+    logger.warning("Could not connect to boto3, S3 support will not work.")
+    
 LORA_FOLDER_PATH = "/tmp/lora_modules"
 
 
